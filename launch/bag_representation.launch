@@ -1,0 +1,17 @@
+<launch>
+	<!-- Position -->
+ 	<node pkg="usbl_position" name="usbl_position" type="usbl_position_node" output="screen"/>
+ 	
+ 	<!-- Plot -->
+ 	<node pkg="usbl_position" name="plot_long" type="plot_long"/>
+ 	
+
+ 	<!--bagfile, to create the topics -->
+  	<param name="use_sim_time" value="true" />
+  	<arg name="bagfile" default="/home/eric/2016-03-18-13-27-33.bag"/>
+  	<node pkg="rosbag" type="play" name="rosbag" args="-l --topics /usbl/usbllong --clock $(arg bagfile)"/>
+
+  	<!--rviz 
+  	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find usbl_position)/config/plotting.rviz" />-->
+</launch>
+

@@ -1,0 +1,51 @@
+<launch>
+	<!-- SENSORS -->
+	<arg name="enableImu"   default="true"/>
+	<arg name="enableDepth" default="true"/>
+	<arg name="enableDvl"   default="true"/>
+	<arg name="enableGps"   default="true"/>
+	<arg name="enableModem" default="true"/>
+	<arg name="enableVO"    default="false"/>
+
+  <!-- USBL -->
+  <node pkg="usbl_position" name="usbl_projection" type="usbl_projection" output="screen">
+  </node> 
+
+
+  <!-- PLOT TRAJECTORIES -->
+  <!-- gps  -->
+  <node pkg="usbl_position" name="plot_path_gps" type="plot_path">
+    <param name="topic_name"   value="/sensors/gps" />
+    <param name="sensor"   value="/gps" />
+    <param name="id"   value="1" />
+  </node>
+  <!-- usbl delayed-->
+  <node pkg="usbl_position" name="plot_path_usbl" type="plot_path">
+    <param name="topic_name"   value="/sensors/modem" />
+    <param name="sensor"   value="/modem" />
+    <param name="id"   value="2" />
+  </node> 
+  <!-- usbl -->
+  <node pkg="usbl_position" name="plot_path_usbl_up" type="plot_path">
+    <param name="topic_name"   value="/sensors/modem_update" />
+    <param name="sensor"   value="/modem_update" />
+    <param name="id"   value="3" />
+  </node> 
+
+
+	<!-- SIMULATION -->
+    <include file="$(find turbot_configurations)/launch/simulation.launch">
+      <arg name="enableImu"   value="$(arg enableImu)"/>
+      <arg name="enableDepth" value="$(arg enableDepth)"/>
+      <arg name="enableDvl"   value="$(arg enableDvl)"/>
+      <arg name="enableGps"   value="$(arg enableGps)"/>
+      <arg name="enableModem" value="$(arg enableModem)"/>
+      <arg name="enableVO"    value="$(arg enableVO)"/>
+      <arg name="enableUWSim" value="true"/>
+    </include>
+
+  	<!-- RVIZ -->
+  	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find usbl_position)/config/plotting.rviz" /> 
+
+</launch>
+
