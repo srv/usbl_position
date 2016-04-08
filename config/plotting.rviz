@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1/Frames1
         - /Waypoint1/Namespaces1
       Splitter Ratio: 0.528662
     Tree Height: 775
@@ -54,6 +55,10 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        depth:
+          Value: true
+        depth_origin:
+          Value: true
         dvl:
           Value: true
         gps:
@@ -72,10 +77,6 @@ Visualization Manager:
           Value: true
         odom:
           Value: true
-        pressure:
-          Value: true
-        pressure_origin:
-          Value: true
         sonar:
           Value: true
         sparus2:
@@ -88,7 +89,7 @@ Visualization Manager:
           Value: true
       Marker Scale: 1
       Name: TF
-      Show Arrows: true
+      Show Arrows: false
       Show Axes: true
       Show Names: true
       Tree:
@@ -99,9 +100,11 @@ Visualization Manager:
             modem_origin:
               {}
             odom:
-              pressure_origin:
+              depth_origin:
                 {}
               sparus2:
+                depth:
+                  {}
                 dvl:
                   {}
                 gps:
@@ -111,8 +114,6 @@ Visualization Manager:
                 laser:
                   {}
                 modem:
-                  {}
-                pressure:
                   {}
                 sonar:
                   {}
@@ -159,7 +160,7 @@ Visualization Manager:
       Buffer Length: 1
       Class: rviz/Path
       Color: 255; 255; 255
-      Enabled: false
+      Enabled: true
       Line Style: Lines
       Line Width: 0.03
       Name: Modem Path
@@ -168,12 +169,12 @@ Visualization Manager:
         Y: 0
         Z: 0
       Topic: /modem/path
-      Value: false
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 120; 120; 120
-      Enabled: false
+      Enabled: true
       Line Style: Lines
       Line Width: 0.03
       Name: Modem UP Path
@@ -182,7 +183,7 @@ Visualization Manager:
         Y: 0
         Z: 0
       Topic: /modem_update/path
-      Value: false
+      Value: true
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -210,17 +211,17 @@ Visualization Manager:
       Marker Topic: /modem/cov
       Name: Modem Cov
       Namespaces:
-        /modem_pose_cov: true
+        {}
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /modem_update/cov
       Name: Modem UP Cov
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /gps/cov
@@ -252,23 +253,20 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 76.0288
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: -14.8037
-        Y: -4.25385
-        Z: -5.71263
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 0.705398
-      Target Frame: <Fixed Frame>
-      Value: Orbit (rviz)
-      Yaw: 1.3704
+      Scale: 149.28
+      Target Frame: sparus2
+      Value: TopDownOrtho (rviz)
+      X: -1.05845
+      Y: 1.42357
     Saved: ~
 Window Geometry:
   Displays:

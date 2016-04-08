@@ -22,7 +22,7 @@ public:
     sub_depth = n.subscribe("sensors/depth_raw", 10, &positioning::depthCallback, this);
 
     //Publishers
-    pub_modem_position = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("usbl/modem_position", 10); 
+    pub_modem_position = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 10); 
     ROS_INFO("Advertise");
 
   }
@@ -31,7 +31,7 @@ public:
   {
     // Modem position
     geometry_msgs::PoseWithCovarianceStamped position;
-    position.header.frame_id = "/usbl";
+    position.header.frame_id = "/modem_origin";
     position.header.stamp = usbllong.header.stamp; //menos propagation time
     position.pose.pose.position.x = (float)usbllong.N;
     position.pose.pose.position.y = (float)usbllong.E;
@@ -56,7 +56,7 @@ public:
 
       // Modem ray
       geometry_msgs::PoseWithCovarianceStamped position;
-      position.header.frame_id = "/usbl";
+      position.header.frame_id = "/modem_origin";
       position.header.stamp = usblangles.header.stamp;
       position.pose.pose.position.x = x;
       position.pose.pose.position.y = y;
@@ -77,9 +77,9 @@ public:
     sigma_depth = pose.pose.covariance[14];
   }
 
-  void spheric2cartesian(const double bearing, 
-                         const double elevation, 
-                         const double depth, 
+  void spheric2cartesian(const double& bearing, 
+                         const double& elevation, 
+                         const double& depth, 
                          double& x, 
                          double& y, 
                          double& z)
@@ -91,10 +91,10 @@ public:
     z = depth; //TODO: Integrate depth of the USBL
   }
 
-  double getCovarianceAngles(const double bearing, 
-                             const double elevation, 
-                             const double depth, 
-                             const double accuracy, 
+  double getCovarianceAngles(const double& bearing, 
+                             const double& elevation, 
+                             const double& depth, 
+                             const double& accuracy, 
                              double& sigma_x, 
                              double& sigma_y,
                              double& sigma_z)

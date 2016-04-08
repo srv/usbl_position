@@ -8,6 +8,7 @@ find_package(catkin REQUIRED
 	std_msgs 
 	geometry_msgs
 	evologics_ros
+	tf
 	)
 
 catkin_package(CATKIN_DEPENDS 
@@ -18,6 +19,7 @@ catkin_package(CATKIN_DEPENDS
   	std_srvs
   	geometry_msgs
 	evologics_ros
+	tf
   	)
 
 
