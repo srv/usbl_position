@@ -11,6 +11,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
+#include <mrpt_cov_ops/mrpt_cov_ops.h>
 
 
 using namespace std;
@@ -23,18 +24,40 @@ public:
   {
     //Subscribers
     sub_usbl_ = n_.subscribe("/sensors/modem", 1, &positioning::usblCallback, this);
-    sub_odom_ = n_.subscribe("/ekf_odom/odometry", 1, &positioning::odomCallback, this);//ekf_odom/odometry
-
+    sub_odom_ = n_.subscribe("/ekf_odom/odometry", 1, &positioning::odomCallback, this);
+    sub_gt_ = n_.subscribe("/sparus/ros_odom_to_pat", 1, &positioning::gtCallback, this);
 
     //Publishers
     pub_modem_position_ = n_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_update", 1); 
   }
 
+  void getOdomError(const tf::Transform& T_ekfOdom) // Get odometry error EKF_ODOM vs GroundTruth from simulator
+  {
+    tf::Vector3 gtOdom_v(gtOdom_.pose.pose.position.x, gtOdom_.pose.pose.position.y, gtOdom_.pose.pose.position.z);
+    tf::Quaternion gtOdom_q(gtOdom_.pose.pose.orientation.x, gtOdom_.pose.pose.orientation.y, gtOdom_.pose.pose.orientation.z, gtOdom_.pose.pose.orientation.w);
+    tf::Transform T_gtOdom_(gtOdom_q, gtOdom_v);
 
+    tf::Transform T_odomError = T_ekfOdom * T_gtOdom_;
+    double e_pos = sqrt(pow(T_odomError.getOrigin().x(),2) + pow(T_odomError.getOrigin().y(),2) + pow(T_odomError.getOrigin().z(),2));
+
+    // Convert to RPY
+    tf::Matrix3x3 mat(T_odomError.getRotation());
+    double roll;
+    double pitch;
+    double yaw;
+    mat.getRPY(roll, pitch, yaw);
+
+    ROS_INFO_STREAM("GT-ODOM err POS: " << e_pos);
+    ROS_INFO_STREAM("GT-ODOM err ROT: " << roll << " \t " << pitch << "\t " << yaw);
+  }
+
+  void gtCallback(const nav_msgs::Odometry& odom)
+  {
+    gtOdom_ = odom;
+  }
 
   void odomCallback(const nav_msgs::Odometry& odom)
-  {
-
+  { 
     mutex_.lock();
     timestamps_.push_back(odom.header.stamp.toSec());
     hist_.push_back(odom);
@@ -150,6 +173,7 @@ public:
     modem_actual.pose.pose.orientation.w = T_mB_new.getRotation().w();
 
     pub_modem_position_.publish(modem_actual);
+    getOdomError(T_sB);
     ROS_INFO("------------------------------------------------------------------");
 
   }
@@ -193,6 +217,7 @@ private:
   ros::NodeHandle n_; 
   ros::Subscriber sub_usbl_;
   ros::Subscriber sub_odom_;
+  ros::Subscriber sub_gt_;
   ros::Publisher pub_modem_position_;
 
 
@@ -202,7 +227,7 @@ private:
   vector<nav_msgs::Odometry> hist_;
   tf::TransformListener listener_;
   bool ekf_init_;
-  nav_msgs::Odometry groundTruth_;
+  nav_msgs::Odometry gtOdom_;
 };
 
 
