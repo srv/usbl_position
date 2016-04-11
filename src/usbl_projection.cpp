@@ -11,7 +11,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
-#include <mrpt_cov_ops/mrpt_cov_ops.h>
+//#include <mrpt_cov_ops/mrpt_cov_ops.h>
 
 
 using namespace std;
@@ -38,7 +38,6 @@ public:
     tf::Transform T_gtOdom_(gtOdom_q, gtOdom_v);
 
     tf::Transform T_odomError = T_ekfOdom * T_gtOdom_;
-    double e_pos = sqrt(pow(T_odomError.getOrigin().x(),2) + pow(T_odomError.getOrigin().y(),2) + pow(T_odomError.getOrigin().z(),2));
 
     // Convert to RPY
     tf::Matrix3x3 mat(T_odomError.getRotation());
@@ -47,7 +46,6 @@ public:
     double yaw;
     mat.getRPY(roll, pitch, yaw);
 
-    ROS_INFO_STREAM("GT-ODOM err POS: " << e_pos);
     ROS_INFO_STREAM("GT-ODOM err ROT: " << roll << " \t " << pitch << "\t " << yaw);
   }
 
