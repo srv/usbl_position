@@ -23,30 +23,37 @@ public:
   positioning() : ekf_init_(false)
   {
     //Subscribers
-    sub_usbl_ = n_.subscribe("/sensors/modem", 1, &positioning::usblCallback, this);
-    sub_odom_ = n_.subscribe("/ekf_odom/odometry", 1, &positioning::odomCallback, this);
-    sub_gt_ = n_.subscribe("/sparus/ros_odom_to_pat", 1, &positioning::gtCallback, this);
+    sub_usbl_ =     n_.subscribe("/sensors/modem", 1, &positioning::usblCallback, this);
+    sub_ekfOdom_ =  n_.subscribe("/ekf_odom/odometry", 1, &positioning::ekfOdomCallback, this);
+    sub_ekfMap_ =   n_.subscribe("/ekf_map/odometry", 1, &positioning::ekfMapCallback, this);
+    sub_gt_ =       n_.subscribe("/sparus/ros_odom_to_pat", 1, &positioning::gtCallback, this);
 
     //Publishers
     pub_modem_position_ = n_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_update", 1); 
   }
 
-  void getOdomError(const tf::Transform& T_ekfOdom) // Get odometry error EKF_ODOM vs GroundTruth from simulator
+  void getOdomError() // Get odometry error EKF_MAP vs GroundTruth from simulator
   {
-    tf::Vector3 gtOdom_v(gtOdom_.pose.pose.position.x, gtOdom_.pose.pose.position.y, gtOdom_.pose.pose.position.z);
     tf::Quaternion gtOdom_q(gtOdom_.pose.pose.orientation.x, gtOdom_.pose.pose.orientation.y, gtOdom_.pose.pose.orientation.z, gtOdom_.pose.pose.orientation.w);
-    tf::Transform T_gtOdom_(gtOdom_q, gtOdom_v);
+    tf::Quaternion ekfMap_q(ekfMap_.pose.pose.orientation.x, ekfMap_.pose.pose.orientation.y, ekfMap_.pose.pose.orientation.z, ekfMap_.pose.pose.orientation.w);
 
-    tf::Transform T_odomError = T_ekfOdom * T_gtOdom_;
+    double roll_ekf;
+    double pitch_ekf;
+    double yaw_ekf;
+    
+    double roll_gt;
+    double pitch_gt;
+    double yaw_gt;
 
-    // Convert to RPY
-    tf::Matrix3x3 mat(T_odomError.getRotation());
-    double roll;
-    double pitch;
-    double yaw;
-    mat.getRPY(roll, pitch, yaw);
+    tf::Matrix3x3 mat_ekf(ekfMap_q);
+    tf::Matrix3x3 mat_gt(gtOdom_q);
+    mat_ekf.getRPY(roll_ekf, pitch_ekf, yaw_ekf);
+    mat_gt.getRPY(roll_gt, pitch_gt, yaw_gt);
+    double rad2deg = 180/3.1416;
 
-    ROS_INFO_STREAM("GT-ODOM err ROT: " << roll << " \t " << pitch << "\t " << yaw);
+    ROS_INFO_STREAM("EKF   (deg): " << roll_ekf*rad2deg << " \t " << pitch_ekf*rad2deg << "\t " << yaw_ekf*rad2deg);
+    ROS_INFO_STREAM("GT    (deg): " << roll_gt*rad2deg << " \t " << pitch_gt*rad2deg << "\t " << yaw_gt*rad2deg);
+    ROS_INFO_STREAM("diff  (deg): " << roll_ekf*rad2deg - roll_gt*rad2deg << " \t " <<  pitch_ekf*rad2deg-pitch_gt*rad2deg << "\t " << yaw_ekf*rad2deg-yaw_gt*rad2deg);
   }
 
   void gtCallback(const nav_msgs::Odometry& odom)
@@ -54,8 +61,15 @@ public:
     gtOdom_ = odom;
   }
 
-  void odomCallback(const nav_msgs::Odometry& odom)
+  void ekfMapCallback(const nav_msgs::Odometry& odom)
+  {
+    ekfMap_ = odom;
+  }
+
+  void ekfOdomCallback(const nav_msgs::Odometry& odom)
   { 
+    ekfOdom_ = odom;
+
     mutex_.lock();
     timestamps_.push_back(odom.header.stamp.toSec());
     hist_.push_back(odom);
@@ -171,7 +185,7 @@ public:
     modem_actual.pose.pose.orientation.w = T_mB_new.getRotation().w();
 
     pub_modem_position_.publish(modem_actual);
-    getOdomError(T_sB);
+    getOdomError();
     ROS_INFO("------------------------------------------------------------------");
 
   }
@@ -214,7 +228,8 @@ private:
 
   ros::NodeHandle n_; 
   ros::Subscriber sub_usbl_;
-  ros::Subscriber sub_odom_;
+  ros::Subscriber sub_ekfOdom_;
+  ros::Subscriber sub_ekfMap_;
   ros::Subscriber sub_gt_;
   ros::Publisher pub_modem_position_;
 
@@ -226,6 +241,8 @@ private:
   tf::TransformListener listener_;
   bool ekf_init_;
   nav_msgs::Odometry gtOdom_;
+  nav_msgs::Odometry ekfMap_;
+  nav_msgs::Odometry ekfOdom_;
 };
 
 
