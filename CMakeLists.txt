@@ -9,6 +9,7 @@ find_package(catkin REQUIRED
 	geometry_msgs
 	evologics_ros
 	tf
+	pose_cov_ops
 	)
 
 catkin_package(CATKIN_DEPENDS 
@@ -20,6 +21,7 @@ catkin_package(CATKIN_DEPENDS
   	geometry_msgs
 	evologics_ros
 	tf
+	pose_cov_ops
   	)
 
 

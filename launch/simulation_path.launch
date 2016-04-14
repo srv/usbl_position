@@ -1,6 +1,6 @@
 <launch>
   <!-- SIMULATION -->
-    <include file="$(find turbot_configurations)/launch/simulation.launch">
+    <include file="$(find turbot)/launch/simulation.launch">
       <arg name="enableImu"   value="true"/>
       <arg name="enableDepth" value="true"/>
       <arg name="enableDvl"   value="true"/>
