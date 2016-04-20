@@ -13,7 +13,7 @@ public:
   SubscribeAndPublish()
   {
     // USBL Marker
-    points.header.frame_id = line_strip.header.frame_id = "/usbl";
+    points.header.frame_id = line_strip.header.frame_id = "/world";
     points.header.stamp = line_strip.header.stamp = ros::Time::now();
     points.ns = line_strip.ns = "points_and_lines";
     points.action = line_strip.action = visualization_msgs::Marker::ADD;
@@ -33,7 +33,7 @@ public:
     marker_pub = n.advertise<visualization_msgs::Marker>("usbl_marker", 10);
 
     //Topic you want to subscribe
-    point_sub = n.subscribe("usbl/modem_position", 10, &SubscribeAndPublish::posCallback, this);
+    point_sub = n.subscribe("sensors/modem_raw", 10, &SubscribeAndPublish::posCallback, this);
   }
 
   void posCallback(const geometry_msgs::PoseWithCovarianceStamped& position)

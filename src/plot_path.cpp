@@ -5,37 +5,55 @@
 #include "nav_msgs/Path.h"
 #include "visualization_msgs/Marker.h"
 
+#include <tf/transform_listener.h>
+
 using namespace std;
 
 
-class SubscribeAndPublish
+class PlotPath
 {
 public:
-  SubscribeAndPublish()
+  PlotPath()
   {
-    // Get params
-
-    ros::NodeHandle nhp("~");
-    nhp.param("topic_name", name_, string("/sensors/modem"));
-    nhp.param("sensor", sensor_, string("/modem"));
-    nhp.param("id", id_, 2);
+    // Node name
+    node_name_ = ros::this_node::getName();
 
 
     //Topic you want to publish
-    path_pub = n.advertise<nav_msgs::Path>(sensor_ + "/path", 10);
-    // cov_pub = n.advertise<visualization_msgs::Marker>(sensor_ + "/cov", 10);
+    path_pub = nhp_.advertise<nav_msgs::Path>("sensors/modem_raw_path", 10);
+    // cov_pub = n.advertise<visualization_msgs::Marker>(node_name_+"/path" + "/cov", 10);
 
     //Topic you want to subscribe
-    pose_sub = n.subscribe(name_, 10, &SubscribeAndPublish::poseCallback, this);
+    pose_sub = nh_.subscribe("sensors/modem_raw", 10, &PlotPath::poseCallback, this);
   }
 
   void poseCallback(const geometry_msgs::PoseWithCovarianceStamped& position)
   {
-    geometry_msgs::PoseStamped p;
+    // TF map-modem_origin
+    tf::StampedTransform  map2origin;
+    try
+    {
+      listener_.waitForTransform("/map", "modem_origin", ros::Time(0), ros::Duration(2));
+      listener_.lookupTransform("/map", "modem_origin", ros::Time(0), map2origin);
+    }
+    catch (tf::TransformException ex){
+      ROS_ERROR_STREAM("Received an exception trying to transform a USBL point: " << ex.what());
+    }
 
-    p.pose.position.x = position.pose.pose.position.x;
-    p.pose.position.y = position.pose.pose.position.y;
-    p.pose.position.z = position.pose.pose.position.z;
+    //TF modem_origin-sparus
+    tf::Transform  origin2sparus;
+    tf::Vector3 origin2sparus_v(position.pose.pose.position.x, position.pose.pose.position.y, position.pose.pose.position.z);
+    tf::Quaternion origin2sparus_q(0.0, 0.0, 0.0, 1);
+    origin2sparus.setOrigin(origin2sparus_v);
+    origin2sparus.setRotation(origin2sparus_q);
+
+    //TF map-sparus
+    tf::Transform  map2sparus = map2origin * origin2sparus;
+
+    geometry_msgs::PoseStamped p;
+    p.pose.position.x = map2sparus.getOrigin().x();
+    p.pose.position.y = map2sparus.getOrigin().y();
+    p.pose.position.z = map2sparus.getOrigin().z();
 
     path.header.stamp = position.header.stamp;
     path.header.frame_id = "map";
@@ -45,7 +63,7 @@ public:
     // visualization_msgs::Marker marker;
     // marker.header.stamp = position.header.stamp;
     // marker.header.frame_id = "map";
-    // marker.ns = sensor_ + "_pose_cov";
+    // marker.ns = node_name_+"/path" + "_pose_cov";
     // marker.id = id_;
     // marker.type = 2;  // SPHERE
     // marker.action = 0; // ADD
@@ -63,18 +81,23 @@ public:
   }
 
 
+
+
 private:
-  ros::NodeHandle n; 
+  ros::NodeHandle nh_; 
+  ros::NodeHandle nhp_;
   ros::Publisher path_pub;
   ros::Publisher cov_pub;
   ros::Subscriber pose_sub;
 
+  tf::TransformListener listener_;
+
   nav_msgs::Path path;
-  string name_, sensor_;
   int id_;
 
+  string node_name_;
 
-};//End of class SubscribeAndPublish
+};//End of class PlotPath
 
 
 int main(int argc, char **argv)
@@ -82,7 +105,7 @@ int main(int argc, char **argv)
   //Initiate ROS
   ros::init(argc, argv, "plot_path");
 
-  SubscribeAndPublish SAPObject;
+  PlotPath SAPObject;
 
   ros::spin();
   return 0;

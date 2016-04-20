@@ -50,7 +50,11 @@
   <build_depend>message_generation</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>pose_cov_ops</build_depend>
+  <build_depend>utils</build_depend>
+  <build_depend>cmake_modules</build_depend>
 
+  <run_depend>cmake_modules</run_depend>
+  <run_depend>utils</run_depend>
   <run_depend>pose_cov_ops</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>message_runtime</run_depend>

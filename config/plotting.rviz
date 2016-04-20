@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Frames1
+        - /Modem UP Path1
         - /Waypoint1/Namespaces1
       Splitter Ratio: 0.528662
     Tree Height: 775
@@ -55,9 +56,13 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        buoy:
+          Value: true
         depth:
           Value: true
-        depth_origin:
+        depth_map_origin:
+          Value: true
+        depth_odom_origin:
           Value: true
         dvl:
           Value: true
@@ -68,6 +73,8 @@ Visualization Manager:
         imu:
           Value: true
         laser:
+          Value: true
+        left_optical:
           Value: true
         map:
           Value: true
@@ -83,7 +90,7 @@ Visualization Manager:
           Value: true
         stereo_down:
           Value: true
-        stereo_down_left_optical:
+        usbl:
           Value: true
         world:
           Value: true
@@ -95,12 +102,14 @@ Visualization Manager:
       Tree:
         world:
           map:
+            depth_map_origin:
+              {}
             gps_origin:
               {}
             modem_origin:
               {}
             odom:
-              depth_origin:
+              depth_odom_origin:
                 {}
               sparus2:
                 depth:
@@ -118,7 +127,7 @@ Visualization Manager:
                 sonar:
                   {}
                 stereo_down:
-                  stereo_down_left_optical:
+                  left_optical:
                     {}
       Update Interval: 0
       Value: true
@@ -182,7 +191,7 @@ Visualization Manager:
         X: 0
         Y: 0
         Z: 0
-      Topic: /modem_update/path
+      Topic: /sensors/modem_raw_path
       Value: true
     - Alpha: 1
       Buffer Length: 1

@@ -17,22 +17,31 @@
 
 using namespace std;
 
-class positioning
+class Projection
 {
 public:
 
-  positioning() : ekf_init_(false)
+  Projection() : ekf_init_(false)
   {
-    getStaticTransform("sparus2","modem", sparus2modem_);
+    // Node name
+    node_name_ = ros::this_node::getName();
+
+    // Get Params
+    string frame_base_link;
+    nh_.param("frames/base_link", frame_base_link, string("sparus2"));
+    nh_.param("frames/sensors/modem", frame_modem_, string("modem"));
+    nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
+
+    getStaticTransform(frame_base_link, frame_modem_, sparus2modem_);
 
     //Subscribers
-    sub_usbl_ =     n_.subscribe("/sensors/modem", 1, &positioning::usblCallback, this);
-    sub_ekfOdom_ =  n_.subscribe("/ekf_odom/odometry", 1, &positioning::ekfOdomCallback, this);
-    sub_ekfMap_ =   n_.subscribe("/ekf_map/odometry", 1, &positioning::ekfMapCallback, this);
-    sub_gt_ =       n_.subscribe("/sparus/ros_odom_to_pat", 1, &positioning::gtCallback, this);
+    sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed", 1, &Projection::usblCallback, this);
+    sub_ekfOdom_ =  nh_.subscribe("/ekf_odom/odometry", 1, &Projection::ekfOdomCallback, this);
+    sub_ekfMap_ =   nh_.subscribe("/ekf_map/odometry", 1, &Projection::ekfMapCallback, this);
+    sub_gt_ =       nh_.subscribe("/sparus/ros_odom_to_pat", 1, &Projection::gtCallback, this);
 
     //Publishers
-    pub_modem_position_ = n_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_update", 1); 
+    pub_modem_position_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1); 
   }
 
 // output        -> string& out      -> foo(s)
@@ -63,7 +72,7 @@ public:
     // ROS_INFO_STREAM("diff  (deg): " << roll_ekf*rad2deg - roll_gt*rad2deg << " \t " <<  pitch_ekf*rad2deg-pitch_gt*rad2deg << "\t " << yaw_ekf*rad2deg-yaw_gt*rad2deg);
   }
 
-  void findOdom(const double& msg_time, nav_msgs::Odometry& odom, vector<nav_msgs::Odometry>& odomVector, double& time_B) //Find odometry at the time of arrival of the usbl msg from the historial trough linear interpolation
+  void findOdom(const double& msg_time, nav_msgs::Odometry& odom_A, nav_msgs::Odometry& odom_B, vector<nav_msgs::Odometry>& odomVector, double& time_B) //Find odometry at the time of arrival of the usbl msg from the historial trough linear interpolation
   {
     // Absolute value of the difference
     vector<double> abs_stamp;
@@ -96,18 +105,19 @@ public:
 
     // Interpolation of neightbor odometries near msg arrival
     float prop = (abs_stamp[min_idx_1])/(abs_stamp[min_idx_1] + abs_stamp[min_idx_2]);
-    odomInterpolation(odom_1, odom_2, odom, prop); // TODO:prop comp inside
+    odomInterpolation(odom_1, odom_2, prop, odom_A); // TODO:prop comp inside
 
     // Reshape historial
     timestamps_.erase(timestamps_.begin() , timestamps_.begin() + min_idx);
     odomHistorial_.erase(odomHistorial_.begin() , odomHistorial_.begin() + min_idx);
     odomVector = odomHistorial_;
+    odom_B = odomHistorial_.back();
     time_B = timestamps_.back();
     mutex_.unlock();
   }
 
   void odomInterpolation(const nav_msgs::Odometry& odom1, const nav_msgs::Odometry& odom2, 
-                               nav_msgs::Odometry& odom,  const float& prop)
+                         const float& prop, nav_msgs::Odometry& odom)
   {
     tf::Vector3 odom1_v(odom1.pose.pose.position.x, odom1.pose.pose.position.y, odom1.pose.pose.position.z);
     tf::Vector3 odom2_v(odom2.pose.pose.position.x, odom2.pose.pose.position.y, odom2.pose.pose.position.z);
@@ -154,42 +164,6 @@ public:
     msg.orientation.w = transform.getRotation().w();
   }
 
-  void getDeltaOdom(const double& time_A, const vector<nav_msgs::Odometry>& odomVector, geometry_msgs::PoseWithCovariance& s1)
-  {
-    double t0 = time_A;
-    double t1, dt, x, y, z, roll, pitch, yaw;
-    tf::Quaternion q;
-    geometry_msgs::PoseWithCovariance s0, ds;
-
-    for (int i = 0; i < odomVector.size(); ++i)
-    {
-      t1 = odomVector[i].header.stamp.toSec();
-      dt = t1 -t0;
-      ds.pose.position.x = odomVector[i].twist.twist.linear.x * dt;
-      ds.pose.position.y = odomVector[i].twist.twist.linear.y * dt;
-      ds.pose.position.z = odomVector[i].twist.twist.linear.z * dt;
-      roll = odomVector[i].twist.twist.angular.x * dt;
-      pitch = odomVector[i].twist.twist.angular.y * dt;
-      yaw = odomVector[i].twist.twist.angular.z * dt;
-      q.setRPY(roll,pitch,yaw);
-      ds.pose.orientation.x = q.x();
-      ds.pose.orientation.y = q.y();
-      ds.pose.orientation.z = q.z();
-      ds.pose.orientation.w = q.w();
-
-      //TODO: put in matrix form
-      for (int j = 0; j < 36; ++j)
-      {
-        ds.covariance[j] = odomVector[i].twist.covariance[j]*pow(dt,2); 
-      }
-
-      //pose_cov_ops::compose(dsparus, sparus2modem_, dmodem);
-      pose_cov_ops::compose(s0, ds, s1);
-      s0 = s1;
-      t0 = t1;
-    }
-  }
-
   void gtCallback(const nav_msgs::Odometry& odom)
   {
     gtOdom_ = odom;
@@ -229,84 +203,46 @@ public:
 
     // Get Old Odometry
     nav_msgs::Odometry odom_A;
+    nav_msgs::Odometry odom_B;
     vector<nav_msgs::Odometry> odomVector;
-    double timeB;
-    findOdom(time_A, odom_A, odomVector, timeB);
-    ros::Time time_B(timeB);
+    double time_B;
+    findOdom(time_A, odom_A, odom_B, odomVector, time_B);
 
 
     // Delta Odom
-    geometry_msgs::PoseWithCovariance delta_odom;
-    getDeltaOdom(time_A, odomVector, delta_odom);
+    geometry_msgs::Pose sparus_A = odom_A.pose.pose;
+    geometry_msgs::Pose sparus_B = odom_B.pose.pose;
+    geometry_msgs::Pose modem_A;
+    geometry_msgs::Pose modem_B;
+    pose_cov_ops::compose(sparus_A, sparus2modem_, modem_A);
+    pose_cov_ops::compose(sparus_B, sparus2modem_, modem_B);
+
+
+    geometry_msgs::Pose delta_odom;
+    pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
 
     // USBL correction
-    geometry_msgs::PoseWithCovariance modem_A_new;
-    geometry_msgs::PoseWithCovariance sparus_A_new;
-    modem_A_new = usbl_msg.pose;
-    pose_cov_ops::inverseCompose(modem_A_new, sparus2modem_, sparus_A_new);
+    geometry_msgs::Pose modem_A_new;
+    modem_A_new = usbl_msg.pose.pose;
+    // Approximate covariances as USBL covariances, odometric covariances are so small //TODO:add justification from odom vel integration
+    modem_A_new.orientation = odom_A.pose.pose.orientation;
 
-    // USBL update position combined with existing odometry orientation
-    sparus_A_new.pose.orientation = odom_A.pose.pose.orientation;
-    sparus_A_new.covariance[21,22,23] = odom_A.pose.covariance[21,22,23];
-    sparus_A_new.covariance[27,28,29] = odom_A.pose.covariance[27,28,29];
-    sparus_A_new.covariance[33,34,35] = odom_A.pose.covariance[33,34,35];
-
-
-    geometry_msgs::PoseWithCovariance sparus_B_new;
-    pose_cov_ops::compose(sparus_A_new, delta_odom, sparus_B_new);
-
-    // TO /modem //TODO: needed?, enough publishing in /map for the filter?? 
-    geometry_msgs::PoseWithCovariance modem_B_new;
-    pose_cov_ops::compose(sparus_B_new, sparus2modem_, modem_B_new);
+    geometry_msgs::Pose modem_B_new;
+    pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
 
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
-    modem_update.header.frame_id = "modem_origin";
-    modem_update.header.stamp = time_B;
-    modem_update.pose = modem_B_new;
+    modem_update.header.frame_id = frame_modem_ + "_" + frame_suffix_;
+    ros::Time tB(time_B);
+    modem_update.header.stamp = tB;
+    modem_update.pose.pose = modem_B_new;
+    modem_update.pose.covariance[0] = usbl_msg.pose.covariance[0];
+    modem_update.pose.covariance[7] = usbl_msg.pose.covariance[7];
+    modem_update.pose.covariance[14] = usbl_msg.pose.covariance[14];
 
 
     pub_modem_position_.publish(modem_update);
     getOdomError();
-
-///
-
-
-    // geometry_msgs::PoseWithCovariance modem_A; 
-    // geometry_msgs::PoseWithCovariance modem_B; 
-    // pose_cov_ops::compose(odom_A.pose, sparus2modem_, modem_A);
-    // pose_cov_ops::compose(odom_B.pose, sparus2modem_, modem_B);
-
-    // double delta_time = time_B.toSec() - time_A;
-    // geometry_msgs::PoseWithCovariance delta_odom;
-    // pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
-
-    // // Odom to modem old updated
-    // geometry_msgs::PoseWithCovariance modem_A_new;
-    // modem_A_new.pose.position = sparus_A.pose.pose.position;
-    // modem_A_new.pose.orientation = modem_A.pose.orientation;
-    // modem_A_new.covariance[0] = sparus_A.pose.covariance[0];
-    // modem_A_new.covariance[7] = sparus_A.pose.covariance[7];
-    // modem_A_new.covariance[14] = sparus_A.pose.covariance[14];
-    // modem_A_new.covariance[21,22,23] = modem_A.covariance[21,22,23];
-    // modem_A_new.covariance[27,28,29] = modem_A.covariance[27,28,29];
-    // modem_A_new.covariance[33,34,35] = modem_A.covariance[33,34,35];
-
-
-    // // Odom to modem actual updated
-    // geometry_msgs::PoseWithCovariance modem_B_new;
-    // pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
-
-    // // Create message
-    // geometry_msgs::PoseWithCovarianceStamped modem_update;
-    // modem_update.header.frame_id = "modem_origin";
-    // modem_update.header.stamp = time_B;
-    // modem_update.pose = modem_B_new;
-
-
-    // pub_modem_position_.publish(modem_update);
-    // getOdomError();
-
 
     // ROS_INFO("------------------------------------------------------------------");
     // ROS_INFO_STREAM("ODOM    Covariance[0]   :" << odom_A.pose.covariance[0]);
@@ -323,33 +259,34 @@ public:
     // ROS_INFO_STREAM("MAP     Covariance[28]  :" << ekfMap_.pose.covariance[28]);
     // ROS_INFO_STREAM("MAP     Covariance[35]  :" << ekfMap_.pose.covariance[35]);
     // ROS_INFO("------------------------------------------------------------------");
-    // ROS_INFO_STREAM("d_ODOM  Covariance[0]   :" << delta_odom.covariance[0]);
-    // ROS_INFO_STREAM("d_ODOM  Covariance[7]   :" << delta_odom.covariance[7]);
-    // ROS_INFO_STREAM("d_ODOM  Covariance[14]  :" << delta_odom.covariance[14]);
-    // ROS_INFO_STREAM("d_ODOM  Covariance[21]  :" << delta_odom.covariance[21]);
-    // ROS_INFO_STREAM("d_ODOM  Covariance[28]  :" << delta_odom.covariance[28]);
-    // ROS_INFO_STREAM("d_ODOM  Covariance[35]  :" << delta_odom.covariance[35]);
-    // ROS_INFO("------------   ------------------------------------------------------");
-    // ROS_INFO_STREAM("USBL    Covariance[0]   :" << sparus_A.pose.covariance[0]);
-    // ROS_INFO_STREAM("USBL    Covariance[7]   :" << sparus_A.pose.covariance[7]);
-    // ROS_INFO_STREAM("USBL    Covariance[14]  :" << sparus_A.pose.covariance[14]);
-    // ROS_INFO_STREAM("USBL    Covariance[21]  :" << sparus_A.pose.covariance[21]);
-    // ROS_INFO_STREAM("USBL    Covariance[28]  :" << sparus_A.pose.covariance[28]);
-    // ROS_INFO_STREAM("USBL    Covariance[35]  :" << sparus_A.pose.covariance[35]);
+    // // ROS_INFO_STREAM("d_ODOM  Covariance[0]   :" << delta_odom.covariance[0]);
+    // // ROS_INFO_STREAM("d_ODOM  Covariance[7]   :" << delta_odom.covariance[7]);
+    // // ROS_INFO_STREAM("d_ODOM  Covariance[14]  :" << delta_odom.covariance[14]);
+    // // ROS_INFO_STREAM("d_ODOM  Covariance[21]  :" << delta_odom.covariance[21]);
+    // // ROS_INFO_STREAM("d_ODOM  Covariance[28]  :" << delta_odom.covariance[28]);
+    // // ROS_INFO_STREAM("d_ODOM  Covariance[35]  :" << delta_odom.covariance[35]);
+    // // ROS_INFO("------------   ------------------------------------------------------");
+    // ROS_INFO_STREAM("USBL    Covariance[0]   :" << usbl_msg.pose.covariance[0]);
+    // ROS_INFO_STREAM("USBL    Covariance[7]   :" << usbl_msg.pose.covariance[7]);
+    // ROS_INFO_STREAM("USBL    Covariance[14]  :" << usbl_msg.pose.covariance[14]);
+    // ROS_INFO_STREAM("USBL    Covariance[21]  :" << usbl_msg.pose.covariance[21]);
+    // ROS_INFO_STREAM("USBL    Covariance[28]  :" << usbl_msg.pose.covariance[28]);
+    // ROS_INFO_STREAM("USBL    Covariance[35]  :" << usbl_msg.pose.covariance[35]);
     // ROS_INFO("------------------------------------------------------------------");
-    // ROS_INFO_STREAM("USBL_up Covariance[0]   :" << modem_B.pose.covariance[0]);
-    // ROS_INFO_STREAM("USBL_up Covariance[7]   :" << modem_B.pose.covariance[7]);
-    // ROS_INFO_STREAM("USBL_up Covariance[14]  :" << modem_B.pose.covariance[14]);
-    // ROS_INFO_STREAM("USBL_up Covariance[21]  :" << modem_B.pose.covariance[21]);
-    // ROS_INFO_STREAM("USBL_up Covariance[28]  :" << modem_B.pose.covariance[28]);
-    // ROS_INFO_STREAM("USBL_up Covariance[35]  :" << modem_B.pose.covariance[35]);
+    // ROS_INFO_STREAM("USBL_up Covariance[0]   :" << modem_update.pose.covariance[0]);
+    // ROS_INFO_STREAM("USBL_up Covariance[7]   :" << modem_update.pose.covariance[7]);
+    // ROS_INFO_STREAM("USBL_up Covariance[14]  :" << modem_update.pose.covariance[14]);
+    // ROS_INFO_STREAM("USBL_up Covariance[21]  :" << modem_update.pose.covariance[21]);
+    // ROS_INFO_STREAM("USBL_up Covariance[28]  :" << modem_update.pose.covariance[28]);
+    // ROS_INFO_STREAM("USBL_up Covariance[35]  :" << modem_update.pose.covariance[35]);
     // ROS_INFO("------------------------------------------------------------------");
-    ROS_INFO("__________________________________________________________________");
+    // ROS_INFO("__________________________________________________________________");
   }
 
 
 private:
-  ros::NodeHandle n_;
+  ros::NodeHandle nh_;
+  ros::NodeHandle nhp_;
 
   ros::Subscriber sub_usbl_;
   ros::Subscriber sub_ekfOdom_;
@@ -357,6 +294,9 @@ private:
   ros::Subscriber sub_gt_;
   ros::Publisher pub_modem_position_;
 
+  string node_name_;
+  string frame_suffix_;
+  string frame_modem_;
 
   boost::mutex mutex_;
   tf::TransformBroadcaster br_;
@@ -375,8 +315,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "usbl_position_node");
 
-  ROS_INFO("Initialize usbl positioning class");
-  positioning usbl_positioning;
+  ROS_INFO("Initialize usbl Projection class");
+  Projection usbl_positioning;
 
   ros::Rate loop_rate(10);
 
