@@ -25,14 +25,14 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS})
 
 add_executable(usbl_position src/usbl_position.cpp)
 target_link_libraries(usbl_position ${catkin_LIBRARIES} ${eigen_LIBRARIES})
-add_dependencies(usbl_position usbl_position_gencpp)
+add_dependencies(usbl_position usbl_position_gencpp evologics_ros_gencpp)
 
 add_executable(usbl_projection src/usbl_projection.cpp)
 target_link_libraries(usbl_projection ${catkin_LIBRARIES})
-add_dependencies(usbl_projection usbl_position_gencpp)
+add_dependencies(usbl_projection usbl_position_gencpp evologics_ros_gencpp)
 
 
 add_executable(plot_path src/plot_path.cpp)
 target_link_libraries(plot_path ${catkin_LIBRARIES})
-add_dependencies(plot_path usbl_position_gencpp)
+add_dependencies(plot_path usbl_position_gencpp evologics_ros_gencpp)
 
