@@ -38,8 +38,6 @@ public:
     nhp_.param("usbl/min_depth", MIN_DEPTH_, double(1.0));
 
 
-
-
     // Static transform
     getStaticTransform(frame_buoy_, frame_usbl, buoy2usbl_);
 

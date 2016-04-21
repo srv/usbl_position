@@ -32,15 +32,6 @@ target_link_libraries(usbl_projection ${catkin_LIBRARIES})
 add_dependencies(usbl_projection usbl_position_gencpp)
 
 
-
-add_executable(plot_position_node src/plot_position_node.cpp)
-target_link_libraries(plot_position_node ${catkin_LIBRARIES})
-add_dependencies(plot_position_node usbl_position_gencpp)
-
-add_executable(plot_long src/plot_long.cpp)
-target_link_libraries(plot_long ${catkin_LIBRARIES})
-add_dependencies(plot_long usbl_position_gencpp)
-
 add_executable(plot_path src/plot_path.cpp)
 target_link_libraries(plot_path ${catkin_LIBRARIES})
 add_dependencies(plot_path usbl_position_gencpp)
