@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 2.8.3)
 project(usbl_position)
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED 
-	roscpp 
-	rospy 
-	std_msgs 
+find_package(catkin REQUIRED
+	roscpp
+	rospy
+	std_msgs
 	geometry_msgs
 	evologics_ros
 	tf

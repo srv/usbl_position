@@ -41,12 +41,8 @@ public:
     sub_gt_ =       nh_.subscribe("/sparus/ros_odom_to_pat", 1, &Projection::gtCallback, this);
 
     //Publishers
-    pub_modem_position_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1); 
+    pub_modem_position_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
   }
-
-// output        -> string& out      -> foo(s)
-// input (copy)  -> string in        -> foo(s)
-// input (by ref)-> const string& in -> foo(s)
 
   void getOdomError() // Get odometry error EKF_MAP vs GroundTruth from simulator
   {
@@ -86,13 +82,13 @@ public:
     // Get side
     int min_idx_1 = min_idx;
     int min_idx_2 = min_idx + 1;
-    if (timestamps_[min_idx] > msg_time){ 
+    if (timestamps_[min_idx] > msg_time){
       int min_idx_1 = min_idx - 1;
       int min_idx_2 = min_idx;
-    } 
+    }
 
     //Threshold
-    if (abs_stamp[min_idx] > 0.05) 
+    if (abs_stamp[min_idx] > 0.05)
     {
       ROS_WARN("NO SYNC BETWEEN ODOM AND USBL FOUND!");
       mutex_.unlock();
@@ -116,7 +112,7 @@ public:
     mutex_.unlock();
   }
 
-  void odomInterpolation(const nav_msgs::Odometry& odom1, const nav_msgs::Odometry& odom2, 
+  void odomInterpolation(const nav_msgs::Odometry& odom1, const nav_msgs::Odometry& odom2,
                          const float& prop, nav_msgs::Odometry& odom)
   {
     tf::Vector3 odom1_v(odom1.pose.pose.position.x, odom1.pose.pose.position.y, odom1.pose.pose.position.z);
@@ -130,7 +126,7 @@ public:
     //TODO: put in matrix form
     for (int i = 0; i < 36; ++i)
     {
-      odom.twist.covariance[i] = odom1.twist.covariance[i]*(1-prop) + odom2.twist.covariance[i]*prop; 
+      odom.twist.covariance[i] = odom1.twist.covariance[i]*(1-prop) + odom2.twist.covariance[i]*prop;
     }
 
     odom.pose.pose.position.x = odom_v.x();
@@ -154,7 +150,7 @@ public:
     }
     catch (tf::TransformException ex){
       ROS_ERROR("Received an exception trying to transform a USBL point: %s", ex.what());
-    }  
+    }
     msg.position.x = transform.getOrigin().x();
     msg.position.y = transform.getOrigin().y();
     msg.position.z = transform.getOrigin().z();
@@ -175,7 +171,7 @@ public:
   }
 
   void ekfOdomCallback(const nav_msgs::Odometry& odom)
-  { 
+  {
     ekfOdom_ = odom;
 
     mutex_.lock();
@@ -183,7 +179,7 @@ public:
     odomHistorial_.push_back(odom);
     ekf_init_ = true;
 
-    if (timestamps_.size() > 1000) 
+    if (timestamps_.size() > 1000)
     {
       timestamps_.erase(timestamps_.begin());
       odomHistorial_.erase(odomHistorial_.begin());
@@ -196,7 +192,7 @@ public:
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
     // Wait to odometry msgs to start
-    if (ekf_init_==false) return; 
+    if (ekf_init_==false) return;
 
     //Measurament timestamp
     double time_A = usbl_msg.header.stamp.toSec();
