@@ -112,7 +112,7 @@ protected:
 
 
   bool getBuoyPose(const sensor_msgs::NavSatFix::ConstPtr& nav,
-                             geometry_msgs::PoseWithCovariance& origin2buoy)
+                   geometry_msgs::PoseWithCovariance& origin2buoy)
   {
     // Read the need origin from parameter server
     double ned_origin_lat, ned_origin_lon;
@@ -292,11 +292,11 @@ int main(int argc, char **argv)
 
   // Message sync
   message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong",      20);
-  message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_1_sub(nh, "/sensors/buoy_filtered", 50);
+  message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_1_sub(nh, "/sensors/buoy", 50);
 
   message_filters::Subscriber<evologics_ros::AcousticModemUSBLANGLES> usblangles_sub(nh, "/sensors/usblangles", 20);
   message_filters::Subscriber<geometry_msgs::PoseWithCovarianceStamped> depth_sub(nh, "/sensors/depth_raw",     50);
-  message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_2_sub(nh, "/sensors/buoy_filtered", 50);
+  message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_2_sub(nh, "/sensors/buoy", 50);
 
   // Define syncs
   typedef message_filters::sync_policies::ApproximateTime<evologics_ros::AcousticModemUSBLLONG,
