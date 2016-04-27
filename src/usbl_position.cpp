@@ -16,9 +16,7 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-
-
-//TODO: Depth delayed
+#include <std_srvs/Empty.h>
 
 using namespace std;
 
@@ -27,6 +25,8 @@ class Position
 public:
   Position(ros::NodeHandle nh) : nh_(nh), nhp_("~"), buoy2usbl_catched_(false)
   {
+    ROS_INFO_STREAM("[" << node_name_ << "]: Running");
+
     // Node name
     node_name_ = ros::this_node::getName();
 
@@ -39,7 +39,16 @@ public:
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
 
-    ROS_INFO_STREAM("[" << node_name_ << "]: Running");
+    modem_on_ = nh_.serviceClient<std_srvs::Empty>("/modem_on");
+    while (!modem_on_.waitForExistence()) {
+      ROS_INFO_STREAM_ONCE("[" << node_name_ << "]: Waiting for /modem_on service to be available.");
+    }
+    ros::Duration(2.0).sleep();
+    ROS_INFO_STREAM("[" << node_name_ << "]: Calling /modem_on service...");
+    std_srvs::Empty srv;
+    modem_on_.call(srv);
+
+    ROS_INFO_STREAM("[" << node_name_ << "]: /modem_on service called!");
   }
 
   void usbllongCallback(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong,
@@ -271,6 +280,8 @@ private:
   tf::TransformBroadcaster broadcaster_;
 
   string node_name_;
+
+  ros::ServiceClient modem_on_;
 
   bool buoy2usbl_catched_;
   geometry_msgs::Pose buoy2usbl_;
