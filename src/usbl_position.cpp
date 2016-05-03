@@ -34,7 +34,6 @@ public:
     nhp_.param("frames/map", frame_map_, string("map"));
     nhp_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
     nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
-    nhp_.param("usbl/min_depth", min_depth_, double(1.0));
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
@@ -91,7 +90,7 @@ public:
         return;
     }
 
-    if (depth->pose.pose.position.z >= min_depth_)
+    if (depth->pose.pose.position.z >= fabs(buoy2usbl_.position.z))
     {
       double x, y, z;
       spheric2cartesian(usblangles->bearing, usblangles->elevation, depth->pose.pose.position.z, x, y, z);
@@ -290,7 +289,6 @@ private:
   string frame_map_;
   string frame_buoy_;
   string frame_usbl_;
-  double min_depth_;
 };
 
 
