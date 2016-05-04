@@ -3,6 +3,7 @@
 #include "geometry_msgs/PoseWithCovariance.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Vector3Stamped.h"
+#include "auv_msgs/NavSts.h"
 #include "evologics_ros/AcousticModemUSBLLONG.h"
 #include "evologics_ros/AcousticModemUSBLANGLES.h"
 #include <cmath>
@@ -78,7 +79,7 @@ public:
   }
 
   void usblanglesCallback(const evologics_ros::AcousticModemUSBLANGLES::ConstPtr& usblangles,
-                          const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& depth,
+                          const auv_msgs::NavSts::ConstPtr& nav_sts,
                           const sensor_msgs::NavSatFix::ConstPtr& nav)
   {
     // Get the static transform from buoy to usbl (just once)
@@ -90,13 +91,14 @@ public:
         return;
     }
 
-    if (depth->pose.pose.position.z >= fabs(buoy2usbl_.position.z))
+    double depth = nav_sts->position.depth;
+    if (depth >= fabs(buoy2usbl_.position.z))
     {
       double x, y, z;
-      spheric2cartesian(usblangles->bearing, usblangles->elevation, depth->pose.pose.position.z, x, y, z);
+      spheric2cartesian(usblangles->bearing, usblangles->elevation, depth, x, y, z);
 
       double sigma_x, sigma_y;
-      getCovarianceAngles(usblangles->bearing, usblangles->elevation, depth->pose.pose.position.z, usblangles->accuracy, sigma_x, sigma_y);
+      getCovarianceAngles(usblangles->bearing, usblangles->elevation, depth, usblangles->accuracy, sigma_x, sigma_y);
 
       // Modem ray
       geometry_msgs::PoseWithCovariance usbl2modem;
@@ -105,7 +107,7 @@ public:
       usbl2modem.pose.position.z = z;
       usbl2modem.covariance[0] = sigma_x;
       usbl2modem.covariance[7] = sigma_y;
-      usbl2modem.covariance[14] = depth->pose.covariance[14];
+      usbl2modem.covariance[14] = 0.1; // TODO: fixed to an static value ()
 
       geometry_msgs::PoseWithCovariance origin2buoy;
       if (!getBuoyPose(nav, origin2buoy)) return;
@@ -304,7 +306,7 @@ int main(int argc, char **argv)
   message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_1_sub(nh, "/sensors/buoy", 50);
 
   message_filters::Subscriber<evologics_ros::AcousticModemUSBLANGLES> usblangles_sub(nh, "/sensors/usblangles", 20);
-  message_filters::Subscriber<geometry_msgs::PoseWithCovarianceStamped> depth_sub(nh, "/sensors/depth_raw",     50);
+  message_filters::Subscriber<auv_msgs::NavSts> nav_sub(nh, "/navigation/nav_sts",  50);
   message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_2_sub(nh, "/sensors/buoy", 50);
 
   // Define syncs
@@ -313,9 +315,9 @@ int main(int argc, char **argv)
   message_filters::Synchronizer<sync_pol1> sync1(sync_pol1(50), usbllong_sub, buoy_1_sub);
 
   typedef message_filters::sync_policies::ApproximateTime<evologics_ros::AcousticModemUSBLANGLES,
-                                                          geometry_msgs::PoseWithCovarianceStamped,
+                                                          auv_msgs::NavSts,
                                                           sensor_msgs::NavSatFix> sync_pol2;
-  message_filters::Synchronizer<sync_pol2> sync2(sync_pol2(50), usblangles_sub, depth_sub, buoy_2_sub);
+  message_filters::Synchronizer<sync_pol2> sync2(sync_pol2(50), usblangles_sub, nav_sub, buoy_2_sub);
 
   sync1.registerCallback(boost::bind(&Position::usbllongCallback, &usbl_positioning, _1, _2));
   sync2.registerCallback(boost::bind(&Position::usblanglesCallback, &usbl_positioning, _1, _2, _3));
