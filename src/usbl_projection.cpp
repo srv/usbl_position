@@ -21,7 +21,7 @@ class Projection
 {
 public:
 
-  Projection() : ekf_init_(false), sparus2modem_catched_(false)
+  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false)
   {
     // Node name
     node_name_ = ros::this_node::getName();
@@ -31,14 +31,17 @@ public:
     nh_.param("frames/sensors/modem", frame_modem_, string("modem"));
     nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
 
+    nhp_.param("sync_time_th", sync_time_th_, 0.1);
+    nhp_.param("sync_dist_th", sync_dist_th_, 1.5);
+
     // Subscribers
-    sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed", 1, &Projection::usblCallback, this);
+    sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
     sub_ekfOdom_ =  nh_.subscribe("/ekf_odom/odometry", 1, &Projection::ekfOdomCallback, this);
     sub_ekfMap_ =   nh_.subscribe("/ekf_map/odometry", 1, &Projection::ekfMapCallback, this);
     sub_gt_ =       nh_.subscribe("/sparus/ros_odom_to_pat", 1, &Projection::gtCallback, this);
 
     // Publishers
-    pub_modem_position_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
+    pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
   }
 
   // Get odometry error EKF_MAP vs GroundTruth from simulator
@@ -75,34 +78,34 @@ public:
   }
 
   // Find odometry at the time of arrival of the usbl msg from the hist. trough linear interpolation
-  void findOdom(const double& msg_time,
-                nav_msgs::Odometry& odom_A,
-                nav_msgs::Odometry& odom_B,
-                double& time_B)
+  bool findOdom(const double& usbl_stamp,
+                nav_msgs::Odometry& odom_for_usbl,
+                nav_msgs::Odometry& last_odom,
+                double& last_odom_stamp)
   {
     // Absolute value of the difference
     vector<double> abs_stamp;
     mutex_.lock();
-    for (uint j=0; j<timestamps_.size(); j++)
-      abs_stamp.push_back(fabs(msg_time-timestamps_[j]));
+    for (uint j=0; j<odom_stamps_.size(); j++)
+      abs_stamp.push_back(fabs(usbl_stamp - odom_stamps_[j]));
 
     vector<double>::iterator result = min_element(abs_stamp.begin(), abs_stamp.end());
     int min_idx = distance(abs_stamp.begin(), result);
 
-    // Get side
-    int min_idx_1 = min_idx;
-    int min_idx_2 = min_idx + 1;
-    if (timestamps_[min_idx] > msg_time){
-      int min_idx_1 = min_idx - 1;
-      int min_idx_2 = min_idx;
-    }
-
-    // Threshold
-    if (abs_stamp[min_idx] > 0.05)
+    // Sync threshold between usbl and odometry measures
+    if (abs_stamp[min_idx] > sync_time_th_)
     {
       ROS_WARN_STREAM("[" << node_name_ << "]: No sync between odom and usbl found!");
       mutex_.unlock();
-      return;
+      return false;
+    }
+
+    // Get sides
+    int min_idx_1 = min_idx;
+    int min_idx_2 = min_idx + 1;
+    if (odom_stamps_[min_idx] > usbl_stamp){
+      int min_idx_1 = min_idx - 1;
+      int min_idx_2 = min_idx;
     }
 
     // Neighbor Odometry Messages
@@ -111,14 +114,15 @@ public:
 
     // Interpolation of neighbor odoms near msg arrival
     float prop = abs_stamp[min_idx_1] / (abs_stamp[min_idx_1] + abs_stamp[min_idx_2]);
-    odomInterpolation(odom_1, odom_2, prop, odom_A); // TODO: prop comp inside
+    odomInterpolation(odom_1, odom_2, prop, odom_for_usbl);
 
     // Reshape hist.
-    timestamps_.erase(timestamps_.begin() , timestamps_.begin() + min_idx);
+    odom_stamps_.erase(odom_stamps_.begin() , odom_stamps_.begin() + min_idx);
     odom_hist_.erase(odom_hist_.begin() , odom_hist_.begin() + min_idx);
-    odom_B = odom_hist_.back();
-    time_B = timestamps_.back();
+    last_odom = odom_hist_.back();
+    last_odom_stamp = odom_stamps_.back();
     mutex_.unlock();
+    return true;
   }
 
   void odomInterpolation(const nav_msgs::Odometry& odom1, const nav_msgs::Odometry& odom2,
@@ -179,16 +183,16 @@ public:
 
   void ekfOdomCallback(const nav_msgs::Odometry& odom)
   {
-    ekf_odom_ = odom;
-
+    // Store odometry values and stamps
     mutex_.lock();
-    timestamps_.push_back(odom.header.stamp.toSec());
+    odom_stamps_.push_back(odom.header.stamp.toSec());
     odom_hist_.push_back(odom);
     ekf_init_ = true;
 
-    if (timestamps_.size() > 1000)
+    // Delete older
+    if (odom_stamps_.size() > 1000)
     {
-      timestamps_.erase(timestamps_.begin());
+      odom_stamps_.erase(odom_stamps_.begin());
       odom_hist_.erase(odom_hist_.begin());
     }
 
@@ -210,17 +214,54 @@ public:
     }
 
     // Measurement timestamp
-    double time_A = usbl_msg.header.stamp.toSec();
+    double usbl_stamp = usbl_msg.header.stamp.toSec();
 
     // Get Old Odometry
-    nav_msgs::Odometry odom_A;
-    nav_msgs::Odometry odom_B;
-    double time_B;
-    findOdom(time_A, odom_A, odom_B, time_B);
+    nav_msgs::Odometry odom_at_usbl_stamp;
+    nav_msgs::Odometry last_odom;
+    double last_odom_stamp;
+    if (!findOdom(usbl_stamp, odom_at_usbl_stamp, last_odom, last_odom_stamp))
+      return;
+
+    // Extract positions
+    tf::Vector3 p_usbl(usbl_msg.pose.pose.position.x,
+                       usbl_msg.pose.pose.position.y,
+                       usbl_msg.pose.pose.position.z);
+    tf::Vector3 p_odom(odom_at_usbl_stamp.pose.pose.position.x,
+                       odom_at_usbl_stamp.pose.pose.position.y,
+                       odom_at_usbl_stamp.pose.pose.position.z);
+
+    // Distance threshold between usbl and odometry measures
+    if (!sync_init_)
+    {
+      last_usbl_sync_ = p_usbl;
+      last_odom_sync_ = p_odom;
+
+      sync_init_ = true;
+      return;
+    }
+    else
+    {
+      // Check distance (x,y)
+      tf::Vector3 usbl_displacement = last_usbl_sync_ - p_usbl;
+      tf::Vector3 odom_displacement = last_odom_sync_ - p_odom;
+      tf::Vector3 d = usbl_displacement - odom_displacement;
+      double dist = sqrt(d.x()*d.x() + d.y()*d.y());
+
+      // Update
+      last_usbl_sync_ = p_usbl;
+      last_odom_sync_ = p_odom;
+
+      if (dist > sync_dist_th_)
+      {
+        ROS_WARN_STREAM("[" << node_name_ << "]: Big distance between usbl position and ekf position: " << dist << "m (threshold: " << sync_dist_th_ << "m).");
+        return;
+      }
+    }
 
     // Delta Odom
-    geometry_msgs::Pose sparus_A = odom_A.pose.pose;
-    geometry_msgs::Pose sparus_B = odom_B.pose.pose;
+    geometry_msgs::Pose sparus_A = odom_at_usbl_stamp.pose.pose;
+    geometry_msgs::Pose sparus_B = last_odom.pose.pose;
     geometry_msgs::Pose modem_A;
     geometry_msgs::Pose modem_B;
     pose_cov_ops::compose(sparus_A, sparus2modem_, modem_A);
@@ -233,7 +274,7 @@ public:
     geometry_msgs::Pose modem_A_new;
     modem_A_new = usbl_msg.pose.pose;
     // Approximate covariances as USBL covariances, odometric covariances are so small //TODO:add justification from odom vel integration
-    modem_A_new.orientation = odom_A.pose.pose.orientation;
+    modem_A_new.orientation = odom_at_usbl_stamp.pose.pose.orientation;
 
     geometry_msgs::Pose modem_B_new;
     pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
@@ -241,8 +282,7 @@ public:
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
     modem_update.header.frame_id = frame_modem_ + "_" + frame_suffix_;
-    ros::Time tB(time_B);
-    modem_update.header.stamp = tB;
+    modem_update.header.stamp = ros::Time(last_odom_stamp);
     modem_update.pose.pose = modem_B_new;
     modem_update.pose.covariance[0] = usbl_msg.pose.covariance[0];
     modem_update.pose.covariance[7] = usbl_msg.pose.covariance[7];
@@ -268,15 +308,21 @@ private:
 
   boost::mutex mutex_;
   tf::TransformBroadcaster br_;
-  vector<double> timestamps_;
+  vector<double> odom_stamps_;
   vector<nav_msgs::Odometry> odom_hist_;
   tf::TransformListener listener_;
   bool ekf_init_;
   nav_msgs::Odometry gt_odom_;
   nav_msgs::Odometry ekf_map_;
-  nav_msgs::Odometry ekf_odom_;
   geometry_msgs::Pose sparus2modem_;
   bool sparus2modem_catched_;
+
+  bool sync_init_;
+  tf::Vector3 last_odom_sync_;
+  tf::Vector3 last_usbl_sync_;
+
+  double sync_time_th_;
+  double sync_dist_th_;
 };
 
 
