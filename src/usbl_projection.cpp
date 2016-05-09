@@ -3,6 +3,7 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/Odometry.h"
+#include "std_msgs/Float64.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/thread/mutex.hpp>
@@ -11,8 +12,8 @@
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-
 #include <pose_cov_ops/pose_cov_ops.h>
+
 
 
 using namespace std;
@@ -21,7 +22,7 @@ class Projection
 {
 public:
 
-  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false)
+  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0)
   {
     // Node name
     node_name_ = ros::this_node::getName();
@@ -32,50 +33,20 @@ public:
     nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
 
     nhp_.param("sync_time_th", sync_time_th_, 0.1);
-    nhp_.param("sync_dist_th", sync_dist_th_, 1.5);
+    nhp_.param("sync_prop_th", sync_prop_th_, 0.1);
+    nhp_.param("sync_disp_th", sync_disp_th_, 0.5);
+    nhp_.param("odom_queue_len", odom_queue_len_, 1000);
+    nhp_.param("percentage_queue_len", percentage_queue_len_, 100);
 
     // Subscribers
     sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
     sub_ekfOdom_ =  nh_.subscribe("/ekf_odom/odometry", 1, &Projection::ekfOdomCallback, this);
-    sub_ekfMap_ =   nh_.subscribe("/ekf_map/odometry", 1, &Projection::ekfMapCallback, this);
-    sub_gt_ =       nh_.subscribe("/sparus/ros_odom_to_pat", 1, &Projection::gtCallback, this);
 
     // Publishers
     pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
+    pub_modem_used_positions_per_ = nh_.advertise<std_msgs::Float64>("sensors/modem_used_positions_per", 1);
   }
 
-  // Get odometry error EKF_MAP vs GroundTruth from simulator
-  double getOdomError(double& r_er, double& p_er, double& y_er)
-  {
-    tf::Quaternion gtOdom_q(gt_odom_.pose.pose.orientation.x,
-                            gt_odom_.pose.pose.orientation.y,
-                            gt_odom_.pose.pose.orientation.z,
-                            gt_odom_.pose.pose.orientation.w);
-
-    tf::Quaternion ekfMap_q(ekf_map_.pose.pose.orientation.x,
-                            ekf_map_.pose.pose.orientation.y,
-                            ekf_map_.pose.pose.orientation.z,
-                            ekf_map_.pose.pose.orientation.w);
-    double roll_ekf;
-    double pitch_ekf;
-    double yaw_ekf;
-
-    double roll_gt;
-    double pitch_gt;
-    double yaw_gt;
-
-    tf::Matrix3x3 mat_ekf(ekfMap_q);
-    tf::Matrix3x3 mat_gt(gtOdom_q);
-    mat_ekf.getRPY(roll_ekf, pitch_ekf, yaw_ekf);
-    mat_gt.getRPY(roll_gt, pitch_gt, yaw_gt);
-    double rad2deg = 180.0/M_PI;
-
-    r_er = fabs(roll_ekf  - roll_gt) *rad2deg;
-    p_er = fabs(pitch_ekf - pitch_gt)*rad2deg;
-    y_er = fabs(yaw_ekf   - yaw_gt)  *rad2deg;
-
-    return sqrt(r_er*r_er + p_er*p_er + y_er*y_er);
-  }
 
   // Find odometry at the time of arrival of the usbl msg from the hist. trough linear interpolation
   bool findOdom(const double& usbl_stamp,
@@ -95,26 +66,34 @@ public:
     // Sync threshold between usbl and odometry measures
     if (abs_stamp[min_idx] > sync_time_th_)
     {
-      ROS_WARN_STREAM("[" << node_name_ << "]: No sync between odom and usbl found!");
+      ROS_WARN_STREAM("[" << node_name_ << "]: No sync between odom and usbl found!  " << abs_stamp[min_idx] << " > " << sync_time_th_);
+      ROS_WARN_STREAM("[" << node_name_ << "]: No sync between odom and usbl found!  Size = " << odom_stamps_.size());
       mutex_.unlock();
       return false;
     }
 
     // Get sides
-    int min_idx_1 = min_idx;
-    int min_idx_2 = min_idx + 1;
-    if (odom_stamps_[min_idx] > usbl_stamp){
-      int min_idx_1 = min_idx - 1;
-      int min_idx_2 = min_idx;
+    int min_idx_1 = min_idx - 1;
+    int min_idx_2 = min_idx;
+    if (odom_stamps_[min_idx] < usbl_stamp)
+    {
+      min_idx_1 = min_idx;
+      min_idx_2 = min_idx + 1;
     }
 
-    // Neighbor Odometry Messages
-    nav_msgs::Odometry odom_1 = odom_hist_[min_idx_1];
-    nav_msgs::Odometry odom_2 = odom_hist_[min_idx_2];
-
-    // Interpolation of neighbor odoms near msg arrival
-    float prop = abs_stamp[min_idx_1] / (abs_stamp[min_idx_1] + abs_stamp[min_idx_2]);
-    odomInterpolation(odom_1, odom_2, prop, odom_for_usbl);
+    if (min_idx < odom_stamps_.size() - 1) // If inside the historial (interpolate)
+    {
+      // Neighbor Odometry Messages
+      nav_msgs::Odometry odom_1 = odom_hist_[min_idx_1];
+      nav_msgs::Odometry odom_2 = odom_hist_[min_idx_2];
+      // Interpolation of neighbor odoms near msg arrival
+      float prop = abs_stamp[min_idx_1] / (abs_stamp[min_idx_1] + abs_stamp[min_idx_2]);
+      odomInterpolation(odom_1, odom_2, prop, odom_for_usbl);
+    }
+    else  // If at the end of the historial (pick the last one)
+    {
+      odom_for_usbl = odom_hist_[min_idx];
+    }
 
     // Reshape hist.
     odom_stamps_.erase(odom_stamps_.begin() , odom_stamps_.begin() + min_idx);
@@ -171,16 +150,6 @@ public:
     }
   }
 
-  void gtCallback(const nav_msgs::Odometry& odom)
-  {
-    gt_odom_ = odom;
-  }
-
-  void ekfMapCallback(const nav_msgs::Odometry& odom)
-  {
-    ekf_map_ = odom;
-  }
-
   void ekfOdomCallback(const nav_msgs::Odometry& odom)
   {
     // Store odometry values and stamps
@@ -190,7 +159,7 @@ public:
     ekf_init_ = true;
 
     // Delete older
-    if (odom_stamps_.size() > 1000)
+    if (odom_stamps_.size() > odom_queue_len_)
     {
       odom_stamps_.erase(odom_stamps_.begin());
       odom_hist_.erase(odom_hist_.begin());
@@ -199,12 +168,33 @@ public:
     mutex_.unlock();
   }
 
+  void getPercentage()
+  {
+    used_positions_.back() = 1;
+
+    float sum = 0;
+    for (uint j=0; j<used_positions_.size(); j++)
+      sum = sum + used_positions_[j];
+
+    std_msgs::Float64 used_positions_per;
+    used_positions_per.data = sum / used_positions_.size() *100;
+
+    pub_modem_used_positions_per_.publish(used_positions_per);
+  }
+
 
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
-    // Wait to odometry msgs to start
+    used_positions_.push_back(0);
+    if (used_positions_.size() > percentage_queue_len_)
+      used_positions_.erase(used_positions_.begin());
+
+
+    // Wait for odometry msgs to start
     if (ekf_init_ == false) return;
 
+
+    // Get static Transform sparus2modem only once
     if (!sparus2modem_catched_)
     {
       if (getStaticTransform(frame_base_link_, frame_modem_, sparus2modem_))
@@ -214,6 +204,7 @@ public:
     }
 
     // Measurement timestamp
+
     double usbl_stamp = usbl_msg.header.stamp.toSec();
 
     // Get Old Odometry
@@ -237,26 +228,31 @@ public:
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
+      ROS_WARN_STREAM("[" << node_name_ << "]: Restart sync");
       sync_init_ = true;
       return;
     }
     else
     {
       // Check distance (x,y)
-      tf::Vector3 usbl_displacement = last_usbl_sync_ - p_usbl;
-      tf::Vector3 odom_displacement = last_odom_sync_ - p_odom;
+      tf::Vector3 usbl_displacement = p_usbl - last_usbl_sync_;
+      tf::Vector3 odom_displacement = p_odom - last_odom_sync_;
       tf::Vector3 d = usbl_displacement - odom_displacement;
+
       double dist = sqrt(d.x()*d.x() + d.y()*d.y());
+      double odom_disp = sqrt(odom_displacement.x()*odom_displacement.x() + odom_displacement.y()*odom_displacement.y());
+
 
       // Update
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
-      if (dist > sync_dist_th_)
+      if (dist > sync_disp_th_ + sync_prop_th_*odom_disp) // TODO: sync_disp_th_ can be extracted from the sensor covariance sync_dist_th_ is a kind of odometry drift
       {
-        ROS_WARN_STREAM("[" << node_name_ << "]: Big distance between usbl position and ekf position: " << dist << "m (threshold: " << sync_dist_th_ << "m).");
+        ROS_WARN_STREAM("[" << node_name_ << "]: Big distance between usbl position and ekf position: " << dist << "m (threshold: " << sync_disp_th_ + sync_prop_th_*odom_disp << "m).");
         return;
       }
+
     }
 
     // Delta Odom
@@ -269,6 +265,7 @@ public:
 
     geometry_msgs::Pose delta_odom;
     pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
+
 
     // USBL correction
     geometry_msgs::Pose modem_A_new;
@@ -288,6 +285,8 @@ public:
     modem_update.pose.covariance[7] = usbl_msg.pose.covariance[7];
     modem_update.pose.covariance[14] = usbl_msg.pose.covariance[14];
     pub_modem_position_.publish(modem_update);
+    // pub_modem_position_.publish(usbl_msg);
+    getPercentage();
   }
 
 
@@ -297,9 +296,9 @@ private:
 
   ros::Subscriber sub_usbl_;
   ros::Subscriber sub_ekfOdom_;
-  ros::Subscriber sub_ekfMap_;
-  ros::Subscriber sub_gt_;
+
   ros::Publisher pub_modem_position_;
+  ros::Publisher pub_modem_used_positions_per_;
 
   string node_name_;
   string frame_suffix_;
@@ -322,7 +321,12 @@ private:
   tf::Vector3 last_usbl_sync_;
 
   double sync_time_th_;
-  double sync_dist_th_;
+  double sync_prop_th_;
+  double sync_disp_th_;
+
+  vector<int> used_positions_;
+  int percentage_queue_len_;
+  int odom_queue_len_;
 };
 
 
