@@ -26,29 +26,34 @@ class Position
 public:
   Position(ros::NodeHandle nh) : nh_(nh), nhp_("~"), buoy2usbl_catched_(false)
   {
-    ROS_INFO_STREAM("[" << node_name_ << "]: Running");
-
     // Node name
     node_name_ = ros::this_node::getName();
+    ROS_INFO_STREAM("[" << node_name_ << "]: Running");
+
 
     // Get Params
     nhp_.param("frames/map", frame_map_, string("map"));
     nhp_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
     nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
+    nhp_.param("enableEvologicsDriver", enableEvologicsDriver_, true);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
 
-    modem_on_ = nh_.serviceClient<std_srvs::Empty>("/modem_on");
-    while (!modem_on_.waitForExistence()) {
-      ROS_INFO_STREAM_ONCE("[" << node_name_ << "]: Waiting for /modem_on service to be available.");
+    // Wait for modem_on service
+    if (enableEvologicsDriver_)
+    {
+      modem_on_ = nh_.serviceClient<std_srvs::Empty>("/modem_on");
+      while (!modem_on_.waitForExistence()) {
+        ROS_INFO_STREAM_ONCE("[" << node_name_ << "]: Waiting for /modem_on service to be available.");
+      }
+      ros::Duration(2.0).sleep();
+      ROS_INFO_STREAM("[" << node_name_ << "]: Calling /modem_on service...");
+      std_srvs::Empty srv;
+      modem_on_.call(srv);
+      ROS_INFO_STREAM("[" << node_name_ << "]: /modem_on service called!");
     }
-    ros::Duration(2.0).sleep();
-    ROS_INFO_STREAM("[" << node_name_ << "]: Calling /modem_on service...");
-    std_srvs::Empty srv;
-    modem_on_.call(srv);
 
-    ROS_INFO_STREAM("[" << node_name_ << "]: /modem_on service called!");
   }
 
   void usbllongCallback(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong,
@@ -251,6 +256,7 @@ private:
   string frame_map_;
   string frame_buoy_;
   string frame_usbl_;
+  bool enableEvologicsDriver_;
 };
 
 
@@ -262,7 +268,7 @@ int main(int argc, char **argv)
   Position usbl_positioning(nh);
 
   // Message sync
-  message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong",      20);
+  message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong", 50);
   message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_1_sub(nh, "/sensors/buoy", 50);
 
   // Define syncs
