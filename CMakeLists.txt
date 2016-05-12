@@ -43,3 +43,6 @@ target_link_libraries(usbl_analysis ${catkin_LIBRARIES})
 
 add_executable(usbl_comm src/usbl_comm.cpp)
 target_link_libraries(usbl_comm ${catkin_LIBRARIES})
+
+add_executable(traj2bag src/traj2bag.cpp)
+target_link_libraries(traj2bag ${catkin_LIBRARIES})

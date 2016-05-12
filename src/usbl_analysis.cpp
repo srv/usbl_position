@@ -48,6 +48,9 @@ public:
     double y1 = var1->pose.pose.position.y;
     double x2 = var2->pose.pose.position.x;
     double y2 = var2->pose.pose.position.y;
+    ROS_INFO_STREAM("VAR1: x = " << x1 << "  /  y = " << y1);
+    ROS_INFO_STREAM("VAR2: x = " << x2 << "  /  y = " << y2);
+
     distance = sqrt(pow(x2-x1,2) + pow(y2-y1,2));
   }
 

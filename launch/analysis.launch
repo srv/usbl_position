@@ -1,0 +1,16 @@
+<launch>
+  <!-- SIMULATION -->
+  <include file="$(find turbot)/launch/simulation.launch"/>
+
+
+  <!-- SET MISSION -->
+  <!-- Load trajectory in the parameter server -->
+  <rosparam command="load" file="$(find usbl_position)/missions/line.yaml"/>
+  <!-- Call service -->
+  <node pkg="usbl_position" name="load_trajectory" type="load_trajectory" output="screen"/>
+
+  <!-- RECORD -->
+  
+
+
+</launch>
