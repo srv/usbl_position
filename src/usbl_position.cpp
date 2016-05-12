@@ -26,10 +26,10 @@ class Position
 public:
   Position(ros::NodeHandle nh) : nh_(nh), nhp_("~"), buoy2usbl_catched_(false)
   {
-    ROS_INFO_STREAM("[" << node_name_ << "]: Running");
-
     // Node name
     node_name_ = ros::this_node::getName();
+    ROS_INFO_STREAM("[" << node_name_ << "]: Running");
+
 
     // Get Params
     nhp_.param("frames/map", frame_map_, string("map"));
@@ -238,6 +238,7 @@ private:
   string frame_map_;
   string frame_buoy_;
   string frame_usbl_;
+  bool enableEvologicsDriver_;
 };
 
 
@@ -249,7 +250,7 @@ int main(int argc, char **argv)
   Position usbl_positioning(nh);
 
   // Message sync
-  message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong",      20);
+  message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong", 50);
   message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_1_sub(nh, "/sensors/buoy", 50);
 
   // Define syncs
