@@ -43,3 +43,4 @@ target_link_libraries(usbl_analysis ${catkin_LIBRARIES})
 
 add_executable(usbl_comm src/usbl_comm.cpp)
 target_link_libraries(usbl_comm ${catkin_LIBRARIES})
+add_dependencies(usbl_comm usbl_position_gencpp evologics_ros_gencpp)
