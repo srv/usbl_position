@@ -5,12 +5,10 @@
 
   <!-- SET MISSION -->
   <!-- Load trajectory in the parameter server -->
-  <rosparam command="load" file="$(find usbl_position)/missions/line.yaml"/>
+  <rosparam command="load" file="$(find usbl_position)/missions/line_short.yaml"/>
   <!-- Call service -->
-  <node pkg="usbl_position" name="load_trajectory" type="load_trajectory" output="screen"/>
+  <node pkg="usbl_position" name="traj2bag" type="traj2bag" output="screen"/>
 
-  <!-- RECORD -->
-  
 
 
 </launch>

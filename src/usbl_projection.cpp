@@ -337,8 +337,8 @@ int main(int argc, char **argv)
   ROS_INFO("Initialize usbl Projection class");
   Projection usbl_positioning;
 
-  ros::Rate loop_rate(10);
-
   ros::spin();
+  ros::shutdown();
+
   return 0;
 }
