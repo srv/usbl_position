@@ -35,13 +35,13 @@ public:
 
   void modemInCb(const evologics_ros::AcousticModemPayload& out)
   {
-    // ROS_INFO_STREAM("modemInCb" << out.payload);
+    // ROS_INFO_STREAM("/usbl/im/out --> /modem/im/in:  " << out.payload);
     pub_modem_in_.publish(out);
   }
 
   void usblInCb(const evologics_ros::AcousticModemPayload& out)
   {
-    // ROS_INFO_STREAM("usblInCb" << out.payload);
+    // ROS_INFO_STREAM("/modem/im/out --> /usbl/im/in:  " << out.payload);
     pub_usbl_in_.publish(out);
   }
 

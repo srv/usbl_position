@@ -1,0 +1,16 @@
+trajectory/latitude: [39.71808404,39.71808404,39.71853226,39.71853226]
+trajectory/longitude: [2.58710459,2.58710459,2.58710727,2.58710727]
+trajectory/depth: [3,3,3,3]
+trajectory/wait: [0,0,0,0]
+trajectory/altitude: [3,3,3,3]
+trajectory/altitude_mode: [false,false,false,false]
+trajectory/mode: ['sparus_los','sparus_los','sparus_los','sparus_los']
+trajectory/actions: ['','','','']
+trajectory/roll: [0,0,0,0]
+trajectory/pitch: [0,0,0,0]
+trajectory/yaw: [0,0,0,0]
+trajectory/trajectory_type: 'absolute'
+trajectory/disable_axis: [false,true,false,true,true,false]
+trajectory/tolerance: [2,2,2,2,2,2]
+trajectory/priority: 10
+trajectory/time_out: 750

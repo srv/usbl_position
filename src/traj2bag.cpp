@@ -5,6 +5,7 @@
 
 #include <safety/MissionStatus.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <stdlib.h>
 #include <thread>
@@ -16,25 +17,39 @@ using namespace std;
 class Traj2bag
 {
 public:
-  Traj2bag(): nh_(), nhp_("~"), end_(false), iterations_(3)
+  Traj2bag(): nh_(), nhp_("~"), end_(false), iterations_(1)
   {
     // Node name
     node_name_ = ros::this_node::getName();
     ROS_INFO_STREAM("[" << node_name_ << "]: Running");
 
+    // Initial position
+    geometry_msgs::PoseWithCovarianceStamped init_pose;
+
+    // Recording services
+    start_recording_ = nh_.serviceClient<std_srvs::Empty>("/start_recording");
+    stop_recording_ = nh_.serviceClient<std_srvs::Empty>("/stop_recording");
+
+    // Publisher
+    pub_pose_odom_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("ekf_odom/set_pose", 1);
+    pub_pose_map_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("ekf_map/set_pose", 1);
+
     // Subscriber
     sub_status_ =  nh_.subscribe("/control/mission_status", 1, &Traj2bag::statusCb, this);
 
     thread* loop = new thread(&Traj2bag::run, this);
+
   }
 
   void run()
   {
-    // Disable Trajectory
-    disableTrajectory();
-
     for (int it = 0; it < iterations_; ++it)
     {
+      // Reset filter
+      // geometry_msgs::PoseWithCovarianceStamped init_pose;
+      // pub_pose_odom_.publish(init_pose);
+      // pub_pose_map_.publish(init_pose);
+
       // Enable trajectory
       setTrajectory();
 
@@ -43,10 +58,11 @@ public:
       ROS_INFO_STREAM("[" << node_name_ << "]: /start_recording service called!");
 
       // Wait to end mission
+      end_=false;
       while (!end_)
       {
-        if (!ros::ok())
-          ros::shutdown();
+         if (!ros::ok())
+           ros::shutdown();
 
         ros::Duration(5.0).sleep();
         ROS_INFO_STREAM("while........");
@@ -62,15 +78,20 @@ public:
 
       // Respawn nodes
       ROS_INFO_STREAM("----------KILL NODES---------");
-      system("rosnode kill /ekf_map /ekf_odom /sim_nav_sensors /sensors /pose_tf_broadcaster /nav_status /captain /trajectory_tracking /thruster_allocator /low_level_controller");
+      system("rosnode kill -a");
+      ros::Duration(3.0).sleep();
     }
+    ros::shutdown();
   }
 
   void statusCb(const safety::MissionStatusConstPtr& status)
   {
-    ROS_INFO_STREAM("statusCb: " << status->current_wp << " / " << status->total_wp);
-    if (status->current_wp == status->total_wp) 
+    // ROS_INFO_STREAM("statusCb: " << status->current_wp << " / " << status->total_wp);
+    if (status->current_wp == status->total_wp)
+    { 
       end_ = true;
+      // ROS_INFO_STREAM("----------LAST WP---------");
+    }
   }
 
 protected:
@@ -130,7 +151,9 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;
 
-  ros::Publisher pub_position_;
+  ros::Publisher pub_pose_odom_;
+  ros::Publisher pub_pose_map_;
+
   ros::Subscriber sub_status_;
 
   ros::ServiceClient load_trajectory_;
@@ -143,6 +166,7 @@ private:
   std_srvs::Empty empty_srv_;
   bool end_;
   int iterations_;
+
 };
 
 

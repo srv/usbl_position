@@ -33,8 +33,8 @@ public:
     nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
 
     nhp_.param("sync_time_th", sync_time_th_, 0.1);
-    nhp_.param("sync_prop_th", sync_prop_th_, 0.1);
-    nhp_.param("sync_disp_th", sync_disp_th_, 0.5);
+    nhp_.param("sync_prop_th", sync_prop_th_, 0.1);//0.1
+    nhp_.param("sync_disp_th", sync_disp_th_, 1.5);//0.5
     nhp_.param("odom_queue_len", odom_queue_len_, 1000);
     nhp_.param("percentage_queue_len", percentage_queue_len_, 100);
 

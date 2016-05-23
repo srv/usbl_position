@@ -1,10 +1,7 @@
 #include "ros/ros.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "nav_msgs/Odometry.h"
-
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-#include <message_filters/sync_policies/approximate_time.h>
+#include "geometry_msgs/Vector3Stamped.h"
 
 #include <cmath>
 
@@ -14,44 +11,72 @@ using namespace std;
 class Analysis
 {
 public:
-  Analysis(ros::NodeHandle nh) : nh_(nh), nhp_("~")
+  Analysis() : nhp_("~")
   {
     // Node name
     node_name_ = ros::this_node::getName();
     ROS_INFO_STREAM("[" << node_name_ << "]: Running");
 
     //Publishers
-    // pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
+    pub_error_modem_raw_ = nhp_.advertise<geometry_msgs::Vector3Stamped>("/error_modem_raw", 10);
+    pub_error_ekf_odom_ = nhp_.advertise<geometry_msgs::Vector3Stamped>("/error_ekf_odom", 10);
+    pub_error_ekf_map_ = nhp_.advertise<geometry_msgs::Vector3Stamped>("/error_ekf_map", 10);
+
+    // Subscribers
+    sub_usbl_ =     nh_.subscribe("/sensors/modem_raw", 1, &Analysis::usblCallback, this);
+    sub_ekf_odom_ =  nh_.subscribe("/ekf_odom/odometry", 1, &Analysis::ekfOdomCallback, this);
+    sub_ekf_map_ =  nh_.subscribe("/ekf_map/odometry", 1, &Analysis::ekfMapCallback, this);
+    sub_gtruth_ =  nh_.subscribe("/sparus/ros_odom_to_pat", 1, &Analysis::gtruthCallback, this);
   }
 
-  void modemRawCb(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& modem_raw,
-                  const nav_msgs::Odometry::ConstPtr& ekf_map,
-                  const nav_msgs::Odometry::ConstPtr& gtruth)
+  void ekfOdomCallback(const nav_msgs::Odometry& ekf_odom)
   {
-    // Modem_raw - GT distance
-    double dist_raw_gt;
-    getDistance(modem_raw, gtruth, dist_raw_gt);
+    ekf_odom_ = ekf_odom;
+  }
 
-    // Ekf_map - GT distance
-    double dist_ekfmap_gt;
-    getDistance(ekf_map, gtruth, dist_ekfmap_gt);
+  void ekfMapCallback(const nav_msgs::Odometry& ekf_map)
+  {
+    ekf_map_ = ekf_map;
+  }
 
-    ROS_INFO_STREAM("dist_raw_gt: " << dist_raw_gt);
-    ROS_INFO_STREAM("dist_ekfmap_gt: " << dist_ekfmap_gt);
+  void gtruthCallback(const nav_msgs::Odometry& gtruth)
+  {
+    gtruth_ = gtruth;
+  }
+
+
+  void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& modem_raw) 
+  {
+    // Get vars
+    nav_msgs::Odometry gtruth = gtruth_;
+    nav_msgs::Odometry ekf_odom = ekf_odom_;
+    nav_msgs::Odometry ekf_map = ekf_map_;
+
+    // Modem_raw
+    geometry_msgs::Vector3Stamped error_modem_raw;
+    getError(modem_raw, gtruth, error_modem_raw);
+    pub_error_modem_raw_.publish(error_modem_raw);
+
+    // Ekf_odom
+    geometry_msgs::Vector3Stamped error_ekf_odom;
+    getError(ekf_odom, gtruth, error_ekf_odom);
+    pub_error_ekf_odom_.publish(error_ekf_odom);
+
+    // Ekf_map
+    geometry_msgs::Vector3Stamped error_ekf_map;
+    getError(ekf_map, gtruth, error_ekf_map);
+    pub_error_ekf_map_.publish(error_ekf_map);
+
 
   }
 
-  template <typename T1, typename T2>
-  void getDistance(const T1& var1, const T2& var2, double distance)
+  template <typename T>
+  void getError(const T& var, const nav_msgs::Odometry& gtruth, geometry_msgs::Vector3Stamped& error)
   {
-    double x1 = var1->pose.pose.position.x;
-    double y1 = var1->pose.pose.position.y;
-    double x2 = var2->pose.pose.position.x;
-    double y2 = var2->pose.pose.position.y;
-    ROS_INFO_STREAM("VAR1: x = " << x1 << "  /  y = " << y1);
-    ROS_INFO_STREAM("VAR2: x = " << x2 << "  /  y = " << y2);
-
-    distance = sqrt(pow(x2-x1,2) + pow(y2-y1,2));
+    error.header = gtruth.header;
+    error.vector.x = var.pose.pose.position.x - gtruth.pose.pose.position.x;
+    error.vector.y = var.pose.pose.position.y - gtruth.pose.pose.position.y;
+    error.vector.z = var.pose.pose.position.z - gtruth.pose.pose.position.z;
   }
 
 private:
@@ -59,9 +84,19 @@ private:
 
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;
-  //ros::Publisher pub_modem_;
 
+  ros::Publisher pub_error_modem_raw_;
+  ros::Publisher pub_error_ekf_odom_;
+  ros::Publisher pub_error_ekf_map_;
 
+  ros::Subscriber sub_gtruth_;
+  ros::Subscriber sub_usbl_;
+  ros::Subscriber sub_ekf_odom_;
+  ros::Subscriber sub_ekf_map_;
+
+  nav_msgs::Odometry gtruth_;
+  nav_msgs::Odometry ekf_odom_;
+  nav_msgs::Odometry ekf_map_;
 };
 
 
@@ -69,22 +104,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "usbl_analysis");
 
-  ros::NodeHandle nh;
-  Analysis usbl_analysis(nh);
-
-  // SYNC_1 (Modem Raw) //
-      // Message sync
-  message_filters::Subscriber<geometry_msgs::PoseWithCovarianceStamped> sub_modem_raw(nh, "/sensors/modem_raw", 20);
-  message_filters::Subscriber<nav_msgs::Odometry> sub_ekf_map(nh, "/ekf_map/odometry", 50);
-  message_filters::Subscriber<nav_msgs::Odometry> sub_gtruth(nh, "/sparus/pat_to_ros_odom", 50);
-      // Define syncs
-  typedef message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseWithCovarianceStamped,
-                                                          nav_msgs::Odometry,
-                                                          nav_msgs::Odometry> 
-                                                          sync_pool_1;
-  message_filters::Synchronizer<sync_pool_1> sync_1(sync_pool_1(50), sub_modem_raw, sub_ekf_map, sub_gtruth);
-  sync_1.registerCallback(boost::bind(&Analysis::modemRawCb, &usbl_analysis, _1, _2, _3));
-
+  Analysis usbl_analysis;
 
   ros::spin();
   ros::shutdown();

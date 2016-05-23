@@ -1,0 +1,16 @@
+trajectory/latitude: [39.71801802,39.71801802,39.71793662,39.71791783,39.71799923,39.71798045,39.71789905,39.71793643,39.71795704,39.71791966,39.71794027,39.71797765,39.71799826,39.71796088,39.7179815,39.71801888,39.71801888]
+trajectory/longitude: [2.58714214,2.58714214,2.58717521,2.58709705,2.58706398,2.58698582,2.58701889,2.58717439,2.58716602,2.58701052,2.58700214,2.58715765,2.58714927,2.58699377,2.58698539,2.5871409,2.5871409]
+trajectory/depth: [0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0]
+trajectory/wait: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/altitude: [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+trajectory/altitude_mode: [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]
+trajectory/mode: ['sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los']
+trajectory/actions: ['','','','','','','','','','','','','','','','','']
+trajectory/roll: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/pitch: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/yaw: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/trajectory_type: 'absolute'
+trajectory/disable_axis: [false,true,false,true,true,false]
+trajectory/tolerance: [2,2,2,2,2,2]
+trajectory/priority: 10
+trajectory/time_out: 1035

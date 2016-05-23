@@ -1,0 +1,16 @@
+trajectory/latitude: [39.71778592,39.71778592,39.71762162,39.71760327,39.71776757,39.71774923,39.71758493,39.71756659,39.71773088,39.71771254,39.71754824,39.71762156,39.7176421,39.71756878,39.71758932,39.71766264,39.71768318,39.71760986,39.7176304,39.71770372,39.71772426,39.71765094,39.71767149,39.7177448,39.71776534,39.71769203,39.71771257,39.71778588,39.71778588]
+trajectory/longitude: [2.58696243,2.58696243,2.58705781,2.5870044,2.58690902,2.58685562,2.58695099,2.58689759,2.58680221,2.5867488,2.58684418,2.58705763,2.58704571,2.58683225,2.58682033,2.58703378,2.58702186,2.58680841,2.58679648,2.58700993,2.58699801,2.58678456,2.58677263,2.58698609,2.58697416,2.58676071,2.58674878,2.58696224,2.58696224]
+trajectory/depth: [0,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,0]
+trajectory/wait: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/altitude: [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+trajectory/altitude_mode: [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]
+trajectory/mode: ['sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los','sparus_los']
+trajectory/actions: ['','','','','','','','','','','','','','','','','','','','','','','','','','','','','']
+trajectory/roll: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/pitch: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/yaw: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+trajectory/trajectory_type: 'absolute'
+trajectory/disable_axis: [false,true,false,true,true,false]
+trajectory/tolerance: [2,2,2,2,2,2]
+trajectory/priority: 10
+trajectory/time_out: 1679
