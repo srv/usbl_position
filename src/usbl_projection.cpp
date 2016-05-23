@@ -81,7 +81,7 @@ public:
       min_idx_2 = min_idx + 1;
     }
 
-    if (min_idx < odom_stamps_.size() - 1) // If inside the historial (interpolate)
+    if (min_idx < (int)odom_stamps_.size() - 1) // If inside the historial (interpolate)
     {
       // Neighbor Odometry Messages
       nav_msgs::Odometry odom_1 = odom_hist_[min_idx_1];
@@ -159,7 +159,7 @@ public:
     ekf_init_ = true;
 
     // Delete older
-    if (odom_stamps_.size() > odom_queue_len_)
+    if ((int)odom_stamps_.size() > odom_queue_len_)
     {
       odom_stamps_.erase(odom_stamps_.begin());
       odom_hist_.erase(odom_hist_.begin());
@@ -186,7 +186,7 @@ public:
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
     used_positions_.push_back(0);
-    if (used_positions_.size() > percentage_queue_len_)
+    if ((int)used_positions_.size() > percentage_queue_len_)
       used_positions_.erase(used_positions_.begin());
 
 

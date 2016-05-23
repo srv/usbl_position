@@ -118,47 +118,6 @@ protected:
     z = depth; //TODO: Integrate depth of the USBL
   }
 
-  double getCovarianceAngles(const double& bearing,
-                             const double& elevation,
-                             const double& depth,
-                             const double& accuracy,
-                             double& sigma_x,
-                             double& sigma_y)
-  {
-    //Extreme coordinates of the ellipse
-    double x_11, y_11, z_11;
-    double x_12, y_12, z_12;
-    double x_21, y_21, z_21;
-    double x_22, y_22, z_22;
-
-    spheric2cartesian(bearing           , elevation + accuracy, depth, x_11, y_11, z_11);
-    spheric2cartesian(bearing           , elevation - accuracy, depth, x_12, y_12, z_12);
-    spheric2cartesian(bearing + accuracy, elevation           , depth, x_21, y_21, z_21);
-    spheric2cartesian(bearing - accuracy, elevation           , depth, x_22, y_22, z_22);
-
-    //Ellipse axis
-    double axis_1 = sqrt(pow(x_12-x_11,2)+pow(y_12-y_11,2));
-    double axis_2 = sqrt(pow(x_22-x_21,2)+pow(y_22-y_21,2));
-    double a;
-    double b;
-
-    if (axis_1>axis_2)
-    {
-      a = axis_1;
-      b = axis_2;
-    }
-    else
-    {
-      a = axis_2;
-      b = axis_1;
-    }
-
-    sigma_x = 2 * sqrt(pow(a * sin(bearing),2) + pow(b * cos(bearing),2)); // TODO: Check
-    sigma_y = 2 * sqrt(pow(a * cos(bearing),2) + pow(b * sin(bearing),2));
-    //sigma_x = 2 * sqrt(pow(a * cos(bearing),2) + pow(b * sin(bearing),2));
-    //sigma_y = 2 * sqrt(pow(a * sin(bearing),2) + pow(b * cos(bearing),2));
-  }
-
   bool getNedOrigin(double& ned_origin_lat, double& ned_origin_lon)
   {
     const string param_ned_origin_lat = "/navigator/ned_origin_lat";
