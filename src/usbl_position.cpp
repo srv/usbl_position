@@ -38,6 +38,7 @@ public:
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
+    pub_buoy_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("buoy_ned", 10);
   }
 
   void usbllongCallback(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong,
@@ -85,6 +86,18 @@ protected:
     // Buoy to NED
     double north_buoy, east_buoy, depth_buoy;
     ned_->geodetic2Ned(nav->latitude, nav->longitude, 0.0, north_buoy, east_buoy, depth_buoy);
+    geometry_msgs::PoseWithCovarianceStamped buoy_ned;
+
+    // Publish buoy NED
+    buoy_ned.header.stamp = nav->header.stamp;
+    buoy_ned.pose.pose.position.x = north_buoy;
+    buoy_ned.pose.pose.position.y = east_buoy;
+    buoy_ned.pose.pose.position.z = depth_buoy;
+    for (int i = 0; i < 9; ++i)
+    {
+      buoy_ned.pose.covariance[i] = nav->position_covariance[i];
+    }
+    pub_buoy_.publish(buoy_ned);
 
     // TF Origin - Buoy
     origin2buoy.pose.position.x = north_buoy;
@@ -185,6 +198,7 @@ private:
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;
   ros::Publisher pub_modem_;
+  ros::Publisher pub_buoy_;
   tf::TransformListener listener_;
   tf::TransformBroadcaster broadcaster_;
 
