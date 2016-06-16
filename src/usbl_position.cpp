@@ -58,9 +58,9 @@ public:
     usbl2modem.pose.position.x = (float)usbllong->N;
     usbl2modem.pose.position.y = (float)usbllong->E;
     usbl2modem.pose.position.z = (float)usbllong->U;
-    usbl2modem.covariance[0] = (float)pow(usbllong->accuracy,2);
-    usbl2modem.covariance[7] = (float)pow(usbllong->accuracy,2);
-    usbl2modem.covariance[13] = (float)pow(usbllong->accuracy,2);
+    usbl2modem.covariance[0] = (float)pow(0.5,2);
+    usbl2modem.covariance[7] = (float)pow(0.5,2);
+    usbl2modem.covariance[13] = (float)pow(0.5,2);
 
     geometry_msgs::PoseWithCovariance origin2buoy;
     if (!getBuoyPose(nav, origin2buoy)) return;
