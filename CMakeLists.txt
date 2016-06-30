@@ -68,3 +68,7 @@ add_dependencies(usbl_comm usbl_position_gencpp evologics_ros_gencpp)
 add_executable(traj2bag src/traj2bag.cpp)
 target_link_libraries(traj2bag ${catkin_LIBRARIES})
 add_dependencies(traj2bag usbl_position_gencpp safety_gencpp)
+
+add_executable(geo2ned src/geo2ned.cpp)
+target_link_libraries(geo2ned ${catkin_LIBRARIES})
+add_dependencies(geo2ned usbl_position_gencpp)

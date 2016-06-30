@@ -32,11 +32,12 @@ public:
     nh_.param("frames/sensors/modem", frame_modem_, string("modem"));
     nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
 
-    nhp_.param("sync_time_th", sync_time_th_, 0.1);
-    nhp_.param("sync_prop_th", sync_prop_th_, 0.1);
-    nhp_.param("sync_disp_th", sync_disp_th_, 0.5);
-    nhp_.param("odom_queue_len", odom_queue_len_, 1000);
-    nhp_.param("percentage_queue_len", percentage_queue_len_, 100);
+    nhp_.param("usbl/sync_time_th", sync_time_th_, 0.1);
+    nhp_.param("usbl/sync_prop_th", sync_prop_th_, 0.1);
+    nhp_.param("usbl/sync_disp_th", sync_disp_th_, 0.5);
+    nhp_.param("usbl/odom_queue_len", odom_queue_len_, 1000);
+    nhp_.param("usbl/percentage_queue_len", percentage_queue_len_, 100);
+    nhp_.param("usbl/cov", usbl_cov_, 0.5);
 
     // Subscribers
     sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
@@ -45,6 +46,7 @@ public:
     // Publishers
     pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
     pub_modem_used_positions_per_ = nh_.advertise<std_msgs::Float64>("sensors/modem_used_positions_per", 1);
+    pub_modem_position_delay_ = nh_.advertise<std_msgs::Float64>("sensors/modem_position_delay", 1);
   }
 
 
@@ -145,7 +147,7 @@ public:
       return true;
     }
     catch (tf::TransformException ex){
-      ROS_ERROR("Received an exception trying to transform a USBL point: %s", ex.what());
+      ROS_ERROR_STREAM("[" << node_name_ << "]: Received an exception trying to transform a USBL point: " << ex.what());
       return false;
     }
   }
@@ -182,6 +184,12 @@ public:
     pub_modem_used_positions_per_.publish(used_positions_per);
   }
 
+  void getDelay(const double& odom, const double& usbl)
+  {
+    std_msgs::Float64 delay;
+    delay.data = odom - usbl;
+    pub_modem_position_delay_.publish(delay);
+  }
 
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
@@ -204,7 +212,6 @@ public:
     }
 
     // Measurement timestamp
-
     double usbl_stamp = usbl_msg.header.stamp.toSec();
 
     // Get Old Odometry
@@ -266,7 +273,6 @@ public:
     geometry_msgs::Pose delta_odom;
     pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
 
-
     // USBL correction
     geometry_msgs::Pose modem_A_new;
     modem_A_new = usbl_msg.pose.pose;
@@ -276,16 +282,18 @@ public:
     geometry_msgs::Pose modem_B_new;
     pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
 
+    
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
     modem_update.header.frame_id = frame_modem_ + "_" + frame_suffix_;
     modem_update.header.stamp = ros::Time(last_odom_stamp);
     modem_update.pose.pose = modem_B_new;
-    modem_update.pose.covariance[0] = usbl_msg.pose.covariance[0];
-    modem_update.pose.covariance[7] = usbl_msg.pose.covariance[7];
-    modem_update.pose.covariance[14] = usbl_msg.pose.covariance[14];
+    modem_update.pose.covariance[0] = usbl_cov_; //usbl_msg.pose.covariance[0];
+    modem_update.pose.covariance[7] = usbl_cov_; //usbl_msg.pose.covariance[7];
+    modem_update.pose.covariance[14] = usbl_cov_; //usbl_msg.pose.covariance[14];
     pub_modem_position_.publish(modem_update);
-    // pub_modem_position_.publish(usbl_msg);
+
+    getDelay(last_odom_stamp, usbl_stamp);
     getPercentage();
   }
 
@@ -299,6 +307,7 @@ private:
 
   ros::Publisher pub_modem_position_;
   ros::Publisher pub_modem_used_positions_per_;
+  ros::Publisher pub_modem_position_delay_;
 
   string node_name_;
   string frame_suffix_;
@@ -323,6 +332,7 @@ private:
   double sync_time_th_;
   double sync_prop_th_;
   double sync_disp_th_;
+  double usbl_cov_;
 
   vector<int> used_positions_;
   int percentage_queue_len_;

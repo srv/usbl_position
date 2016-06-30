@@ -44,7 +44,4 @@
     <arg name="placesDir" default="$(find turbot)/config/places"/>
     <rosparam command="load" file="$(arg placesDir)/$(arg place)"/>
 
-    <!-- Filter buoy gps -->
-
-    
 </launch>

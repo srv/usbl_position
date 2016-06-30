@@ -35,6 +35,7 @@ public:
     nhp_.param("frames/map", frame_map_, string("map"));
     nhp_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
     nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
+    nhp_.param("sensors/usbl/covariance", cov_usbl_, 4.0);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
@@ -42,7 +43,7 @@ public:
   }
 
   void usbllongCallback(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong,
-                        const sensor_msgs::NavSatFix::ConstPtr& nav)
+                        const sensor_msgs::NavSatFix::ConstPtr& buoy)
   {
     // Get the static transform from buoy to usbl (just once)
     if (!buoy2usbl_catched_)
@@ -53,28 +54,53 @@ public:
         return;
     }
 
-    // Modem position
+    // Conditions
+    if (!checkMsgQuality(usbllong)) return;
+    
+    geometry_msgs::PoseWithCovariance origin2buoy;
+    if (!getBuoyPose(buoy, origin2buoy)) return;
+
+    // Compute Modem position
     geometry_msgs::PoseWithCovariance usbl2modem;
     usbl2modem.pose.position.x = (float)usbllong->N;
     usbl2modem.pose.position.y = (float)usbllong->E;
-    usbl2modem.pose.position.z = (float)usbllong->U;
-    usbl2modem.covariance[0] = (float)pow(usbllong->accuracy,2);
-    usbl2modem.covariance[7] = (float)pow(usbllong->accuracy,2);
-    usbl2modem.covariance[13] = (float)pow(usbllong->accuracy,2);
-
-    geometry_msgs::PoseWithCovariance origin2buoy;
-    if (!getBuoyPose(nav, origin2buoy)) return;
-
-    transformAndPublish(usbl2modem, origin2buoy, usbllong->header.stamp);
+    usbl2modem.pose.position.z = -(float)usbllong->U;
+    usbl2modem.covariance[0] = cov_usbl_;
+    usbl2modem.covariance[7] = cov_usbl_;
+    usbl2modem.covariance[13] = cov_usbl_;
+    transformAndPublish(usbl2modem, origin2buoy, usbllong->header.stamp); 
   }
 
 protected:
 
+  bool checkMsgQuality(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong) // TODO filtr also the gps
+  {
+    bool flag = true;
+    //The signal strength is acceptable when measured RSSI values lie between -20 dB and -85 dB.
+    float rssi = usbllong->rssi;
+    if (-85 >= rssi)
+    {
+      if (rssi >= -20)
+      {
+        ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = " << rssi <<" (-85dB > rssi > -20dB).");
+        flag = false;
+      }
+    }
 
-  bool getBuoyPose(const sensor_msgs::NavSatFix::ConstPtr& nav,
+    //An acoustic link is considered weak if the Signal Integrity Level value is less than 100
+    float integrity = usbllong->integrity;
+    if (integrity < 100)
+    {
+      ROS_WARN_STREAM("[" << node_name_ << "]: Signal Integrity Level is not acceptable: integrity = " << integrity <<" (integrity < 100).");
+      flag = false;
+    }
+    return flag;
+  }
+
+  bool getBuoyPose(const sensor_msgs::NavSatFix::ConstPtr& buoy,
                    geometry_msgs::PoseWithCovariance& origin2buoy)
   {
-    // Read the need origin from parameter server
+    // Read NED Origin from parameter server
     double ned_origin_lat, ned_origin_lon;
     if (!getNedOrigin(ned_origin_lat, ned_origin_lon))
     {
@@ -85,51 +111,51 @@ protected:
 
     // Buoy to NED
     double north_buoy, east_buoy, depth_buoy;
-    ned_->geodetic2Ned(nav->latitude, nav->longitude, 0.0, north_buoy, east_buoy, depth_buoy);
-    geometry_msgs::PoseWithCovarianceStamped buoy_ned;
-
-    // Publish buoy NED
-    buoy_ned.header.stamp = nav->header.stamp;
-    buoy_ned.pose.pose.position.x = north_buoy;
-    buoy_ned.pose.pose.position.y = east_buoy;
-    buoy_ned.pose.pose.position.z = depth_buoy;
-    for (int i = 0; i < 9; ++i)
-    {
-      buoy_ned.pose.covariance[i] = nav->position_covariance[i];
-    }
-    pub_buoy_.publish(buoy_ned);
+    ned_->geodetic2Ned(buoy->latitude, buoy->longitude, 0.0, north_buoy, east_buoy, depth_buoy);
 
     // TF Origin - Buoy
     origin2buoy.pose.position.x = north_buoy;
     origin2buoy.pose.position.y = east_buoy;
     origin2buoy.pose.position.z = 0.0;
-    //origin2buoy_.covariance =                               // TODO: Insert the covariance of the gps
+    for (int i = 0; i < 9; ++i)
+    {
+      origin2buoy.covariance[i] = buoy->position_covariance[i];
+    }
 
-    // Publish TF
+    // Publish buoy NED
+    geometry_msgs::PoseWithCovarianceStamped buoy_ned;
+    buoy_ned.header.stamp = buoy->header.stamp;
+    buoy_ned.pose.pose.position.x = north_buoy;
+    buoy_ned.pose.pose.position.y = east_buoy;
+    buoy_ned.pose.pose.position.z = depth_buoy;
+    buoy_ned.pose.covariance = origin2buoy.covariance;
+
+    pub_buoy_.publish(buoy_ned);
+
+    // Publish  Buoy TF
     tf::Transform tf_buoy;
     tf::Vector3 tf_buoy_v(north_buoy, east_buoy, 0.0);
     tf::Quaternion tf_buoy_q(0.0, 0.0, 0.0, 1);
     tf_buoy.setOrigin(tf_buoy_v);
     tf_buoy.setRotation(tf_buoy_q);
-    broadcaster_.sendTransform(tf::StampedTransform(tf_buoy, nav->header.stamp, frame_map_, frame_buoy_));
-
+    broadcaster_.sendTransform(tf::StampedTransform(tf_buoy, buoy->header.stamp, frame_map_, frame_buoy_));
     return true;
   }
 
-
-  void spheric2cartesian(const double& bearing,
-                         const double& elevation,
-                         const double& depth,
-                         double& x,
-                         double& y,
-                         double& z)
-  {
-    //x = depth * tan(elevation) * cos(bearing);
-    //y = depth * tan(elevation) * sin(bearing);
-    x = depth * sin(bearing) / tan(elevation);
-    y = depth * cos(bearing) / tan(elevation);
-    z = depth; //TODO: Integrate depth of the USBL
-  }
+// USBLANGLES
+  // void spheric2cartesian(const double& bearing,
+  //                        const double& elevation,
+  //                        const double& depth,
+  //                        double& x,
+  //                        double& y,
+  //                        double& z)
+  // {
+  //   //x = depth * tan(elevation) * cos(bearing);
+  //   //y = depth * tan(elevation) * sin(bearing);
+  //   x = depth * sin(bearing) / tan(elevation);
+  //   y = depth * cos(bearing) / tan(elevation);
+  //   z = depth; //TODO: Integrate depth of the USBL
+  // }
 
   bool getNedOrigin(double& ned_origin_lat, double& ned_origin_lon)
   {
@@ -211,7 +237,7 @@ private:
   string frame_map_;
   string frame_buoy_;
   string frame_usbl_;
-  bool enableEvologicsDriver_;
+  double cov_usbl_;
 };
 
 
@@ -224,13 +250,13 @@ int main(int argc, char **argv)
 
   // Message sync
   message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong", 50);
-  message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_1_sub(nh, "/sensors/buoy", 50);
+  message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_sub(nh, "/sensors/buoy", 50);
 
   // Define syncs
   typedef message_filters::sync_policies::ApproximateTime<evologics_ros::AcousticModemUSBLLONG,
-                                                          sensor_msgs::NavSatFix> sync_pol1;
-  message_filters::Synchronizer<sync_pol1> sync1(sync_pol1(50), usbllong_sub, buoy_1_sub);
-  sync1.registerCallback(boost::bind(&Position::usbllongCallback, &usbl_positioning, _1, _2));
+                                                          sensor_msgs::NavSatFix> sync_pool;
+  message_filters::Synchronizer<sync_pool> sync(sync_pool(50), usbllong_sub, buoy_sub);
+  sync.registerCallback(boost::bind(&Position::usbllongCallback, &usbl_positioning, _1, _2));
 
   ros::spin();
 
