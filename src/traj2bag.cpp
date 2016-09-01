@@ -38,6 +38,7 @@ public:
     sub_status_ =  nh_.subscribe("/control/mission_status", 1, &Traj2bag::statusCb, this);
 
     thread* loop = new thread(&Traj2bag::run, this);
+    loop->join();
 
   }
 
@@ -78,7 +79,8 @@ public:
 
       // Respawn nodes
       ROS_INFO_STREAM("----------KILL NODES---------");
-      system("rosnode kill -a");
+      int ret = system("rosnode kill -a");
+      ROS_DEBUG_STREAM("Return command: " << ret);
       ros::Duration(3.0).sleep();
     }
     ros::shutdown();
@@ -88,7 +90,7 @@ public:
   {
     // ROS_INFO_STREAM("statusCb: " << status->current_wp << " / " << status->total_wp);
     if (status->current_wp == status->total_wp)
-    { 
+    {
       end_ = true;
       // ROS_INFO_STREAM("----------LAST WP---------");
     }
