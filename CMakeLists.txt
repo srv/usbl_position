@@ -27,6 +27,8 @@ find_package(catkin REQUIRED
 	std_msgs
 	geometry_msgs
 	evologics_ros
+  auv_msgs
+  control
 	safety
 	tf
 	pose_cov_ops
@@ -38,22 +40,30 @@ find_package(catkin REQUIRED
 # Dependencies - Eigen:
 find_package(Eigen3 REQUIRED)
 
-catkin_package()
+catkin_package(
+  CATKIN_DEPENDS
+  message_runtime
+  rospy
+  roscpp
+  safety
+  evologics_ros
+  auv_msgs
+  control)
 
 ## Build node
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
 
 add_executable(usbl_position src/usbl_position.cpp)
 target_link_libraries(usbl_position ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES})
-add_dependencies(usbl_position evologics_ros_gencpp)
+add_dependencies(usbl_position ${catkin_EXPORTED_TARGETS})
 
 add_executable(usbl_projection src/usbl_projection.cpp)
 target_link_libraries(usbl_projection ${catkin_LIBRARIES})
-add_dependencies(usbl_projection evologics_ros_gencpp)
+add_dependencies(usbl_projection ${catkin_EXPORTED_TARGETS})
 
 add_executable(plot_path src/plot_path.cpp)
 target_link_libraries(plot_path ${catkin_LIBRARIES})
-add_dependencies(plot_path evologics_ros_gencpp)
+add_dependencies(plot_path ${catkin_EXPORTED_TARGETS})
 
 add_executable(nav_sat_pub src/nav_sat_pub.cpp)
 target_link_libraries(nav_sat_pub ${catkin_LIBRARIES})
@@ -63,11 +73,11 @@ target_link_libraries(usbl_analysis ${catkin_LIBRARIES})
 
 add_executable(usbl_comm src/usbl_comm.cpp)
 target_link_libraries(usbl_comm ${catkin_LIBRARIES})
-add_dependencies(usbl_comm evologics_ros_gencpp)
+add_dependencies(usbl_comm ${catkin_EXPORTED_TARGETS})
 
 add_executable(traj2bag src/traj2bag.cpp)
 target_link_libraries(traj2bag ${catkin_LIBRARIES})
-add_dependencies(traj2bag safety_gencpp)
+add_dependencies(traj2bag ${catkin_EXPORTED_TARGETS})
 
 add_executable(geo2ned src/geo2ned.cpp)
 target_link_libraries(geo2ned ${catkin_LIBRARIES})

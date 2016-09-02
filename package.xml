@@ -53,6 +53,8 @@
   <build_depend>utils</build_depend>
   <build_depend>cmake_modules</build_depend>
   <build_depend>safety</build_depend>
+  <build_depend>auv_msgs</build_depend>
+  <build_depend>control</build_depend>
 
   <run_depend>safety</run_depend>
   <run_depend>cmake_modules</run_depend>
@@ -66,9 +68,7 @@
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>std_srvs</run_depend>
-  <!-- The export tag contains other, unspecified, tags -->
-  <export>
-    <!-- Other tools can request additional information be placed here -->
+  <run_depend>auv_msgs</run_depend>
+  <run_depend>control</run_depend>
 
-  </export>
 </package>
