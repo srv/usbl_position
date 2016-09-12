@@ -65,9 +65,6 @@ add_executable(plot_path src/plot_path.cpp)
 target_link_libraries(plot_path ${catkin_LIBRARIES})
 add_dependencies(plot_path ${catkin_EXPORTED_TARGETS})
 
-add_executable(nav_sat_pub src/nav_sat_pub.cpp)
-target_link_libraries(nav_sat_pub ${catkin_LIBRARIES})
-
 add_executable(usbl_analysis src/usbl_analysis.cpp)
 target_link_libraries(usbl_analysis ${catkin_LIBRARIES})
 
