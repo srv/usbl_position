@@ -64,7 +64,7 @@ public:
     geometry_msgs::PoseWithCovariance usbl2modem;
     usbl2modem.pose.position.x = (float)usbllong->N;
     usbl2modem.pose.position.y = (float)usbllong->E;
-    usbl2modem.pose.position.z = -(float)usbllong->U;
+    usbl2modem.pose.position.z = (float)usbllong->U;
     usbl2modem.covariance[0] = cov_usbl_;
     usbl2modem.covariance[7] = cov_usbl_;
     usbl2modem.covariance[13] = cov_usbl_;
@@ -78,14 +78,14 @@ protected:
     bool flag = true;
     //The signal strength is acceptable when measured RSSI values lie between -20 dB and -85 dB.
     float rssi = usbllong->rssi;
-    if (-85 <= rssi)
+    if (rssi < -85 )
     {
-      ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = " << rssi <<" (-85dB > rssi > -20dB).");
+      ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = -85dB <" << rssi);
       flag = false;
     }
-    if (rssi >= -20)
+    if (rssi > -20)
     {
-      ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = " << rssi <<" (-85dB > rssi > -20dB).");
+      ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = " << rssi <<" < -20dB).");
       flag = false;
     }
 
