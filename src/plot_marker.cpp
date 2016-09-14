@@ -22,6 +22,7 @@ public:
     nhp_.param("b", blue_, 0.0);
     nhp_.param("a", alpha_, 1.0);
     nhp_.param("size", size_, 0.5);
+    nhp_.param("duration", duration_, 600);
 
     // Node name
     node_name_ = ros::this_node::getName();
@@ -109,7 +110,7 @@ public:
     marker_id_++;
 
     marker.action = 0; // ADD
-    marker.lifetime = ros::Duration(600);
+    marker.lifetime = ros::Duration(duration_);
   }
 
 private:
@@ -129,7 +130,7 @@ private:
   double blue_;
   double alpha_;
   double size_;
-
+  int duration_;
   int marker_id_;
 
 };//End of class PlotPath
