@@ -38,6 +38,7 @@ public:
     nhp_.param("sensors/usbl/odom_queue_len", odom_queue_len_, 1000);
     nhp_.param("sensors/usbl/percentage_queue_len", percentage_queue_len_, 100);
     nhp_.param("sensors/usbl/covariance", usbl_cov_, 6.0);
+    nhp_.param("sensors/usbl/initial_measurements", initial_measurements_, 10);
 
     // Subscribers
     sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
@@ -232,6 +233,9 @@ public:
     // Distance threshold between usbl and odometry measures
     if (!sync_init_)
     {
+      //int it = 1;
+      //double sum_dist_x = 0.0;
+      //double sum_dist_y = 0.0;
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
@@ -241,7 +245,7 @@ public:
     }
     else
     {
-      // Check distance (x,y)
+      // Check distance (x,y) 
       tf::Vector3 usbl_displacement = p_usbl - last_usbl_sync_;
       tf::Vector3 odom_displacement = p_odom - last_odom_sync_;
       tf::Vector3 d = usbl_displacement - odom_displacement;
@@ -249,11 +253,26 @@ public:
       double dist = sqrt(d.x()*d.x() + d.y()*d.y());
       double odom_disp = sqrt(odom_displacement.x()*odom_displacement.x() + odom_displacement.y()*odom_displacement.y());
 
-
+      ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
+      ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
       // Update
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
+      //// Initial filter (Use with transformed measurements)
+      //if (it <= initial_measurements_)
+      //{
+      //  sum_dist_x = d.x() + sum_dist_x;
+      //  sum_dist_y = d.y() + sum_dist_y;
+      //  it++;
+      //  if (it > initial_measurements_)
+      //  {
+      //    double offset_x = sum_dist_x/initial_measurements_;
+      //    double offset_y = sum_dist_y/initial_measurements_;
+      //  }
+      //}
+
+      // Filter by distance
       if (dist > sync_disp_th_ + sync_prop_th_*odom_disp) // TODO: sync_disp_th_ can be extracted from the sensor covariance sync_dist_th_ is a kind of odometry drift
       {
         ROS_WARN_STREAM("[" << node_name_ << "]: Big distance between usbl position and ekf position: " << dist << "m (threshold: " << sync_disp_th_ + sync_prop_th_*odom_disp << "m).");
@@ -337,6 +356,7 @@ private:
   vector<int> used_positions_;
   int percentage_queue_len_;
   int odom_queue_len_;
+  int initial_measurements_;
 };
 
 
