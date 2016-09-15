@@ -253,8 +253,9 @@ public:
       double dist = sqrt(d.x()*d.x() + d.y()*d.y());
       double odom_disp = sqrt(odom_displacement.x()*odom_displacement.x() + odom_displacement.y()*odom_displacement.y());
 
-      ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
-      ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
+      //ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
+      //ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
+      
       // Update
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
