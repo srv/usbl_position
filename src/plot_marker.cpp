@@ -22,7 +22,8 @@ public:
     nhp_.param("b", blue_, 0.0);
     nhp_.param("a", alpha_, 1.0);
     nhp_.param("size", size_, 0.5);
-    nhp_.param("duration", duration_, 600);
+    nhp_.param("duration", duration_, 30);
+    nhp_.param("frame_id", frame_id_, string(""));
 
     // Node name
     node_name_ = ros::this_node::getName();
@@ -75,8 +76,8 @@ public:
   {
     try
     {
-      listener_.waitForTransform("/map", "modem_origin", ros::Time(0), ros::Duration(2));
-      listener_.lookupTransform("/map", "modem_origin", ros::Time(0), map2origin);
+      listener_.waitForTransform("/map", frame_id_, ros::Time(0), ros::Duration(2));
+      listener_.lookupTransform("/map", frame_id_, ros::Time(0), map2origin);
     }
     catch (tf::TransformException ex){
       ROS_ERROR_STREAM("[" << node_name_ << "]: Received an exception trying to transform a USBL point: " << ex.what());
@@ -110,7 +111,7 @@ public:
     marker_id_++;
 
     marker.action = 0; // ADD
-    marker.lifetime = ros::Duration(duration_);
+    marker.lifetime = ros::Duration(600);
   }
 
 private:
@@ -132,6 +133,7 @@ private:
   double size_;
   int duration_;
   int marker_id_;
+  string frame_id_;
 
 };//End of class PlotPath
 
