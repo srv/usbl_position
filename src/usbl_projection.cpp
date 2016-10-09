@@ -22,7 +22,7 @@ class Projection
 {
 public:
 
-  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0)
+  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0), it_(0), sum_dist_x_(0.0), sum_dist_y_(0.0) 
   {
     // Node name
     node_name_ = ros::this_node::getName();
@@ -33,16 +33,17 @@ public:
     nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
 
     nhp_.param("sensors/usbl/sync_time_th", sync_time_th_, 0.1);
-    nhp_.param("sensors/usbl/sync_prop_th", sync_prop_th_, 0.1);
-    nhp_.param("sensors/usbl/sync_disp_th", sync_disp_th_, 0.5);
+    nhp_.param("sensors/usbl/sync_prop_th", sync_prop_th_, 0.5);
+    nhp_.param("sensors/usbl/sync_disp_th", sync_disp_th_, 0.7);
     nhp_.param("sensors/usbl/odom_queue_len", odom_queue_len_, 1000);
     nhp_.param("sensors/usbl/percentage_queue_len", percentage_queue_len_, 100);
-    nhp_.param("sensors/usbl/covariance", usbl_cov_, 6.0);
-    nhp_.param("sensors/usbl/initial_measurements", initial_measurements_, 10);
+    nhp_.param("sensors/usbl/covariance", usbl_cov_, 4.0);
+    nhp_.param("sensors/usbl/initial_measurements", initial_measurements_, 0);
 
     // Subscribers
     sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
     sub_ekfOdom_ =  nh_.subscribe("/ekf_odom/odometry", 1, &Projection::ekfOdomCallback, this);
+    sub_ekfMap_ =  nh_.subscribe("/ekf_map/odometry", 1, &Projection::ekfMapCallback, this);
 
     // Publishers
     pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
@@ -171,6 +172,11 @@ public:
     mutex_.unlock();
   }
 
+  void ekfMapCallback(const nav_msgs::Odometry& map) //TODO: May be less consuming to syncronize with a gps measurement
+  {
+    ekf_map_ = map;
+  }
+
   void getPercentage()
   {
     used_positions_.back() = 1;
@@ -233,9 +239,6 @@ public:
     // Distance threshold between usbl and odometry measures
     if (!sync_init_)
     {
-      //int it = 1;
-      //double sum_dist_x = 0.0;
-      //double sum_dist_y = 0.0;
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
@@ -259,19 +262,6 @@ public:
       // Update
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
-
-      //// Initial filter (Use with transformed measurements)
-      //if (it <= initial_measurements_)
-      //{
-      //  sum_dist_x = d.x() + sum_dist_x;
-      //  sum_dist_y = d.y() + sum_dist_y;
-      //  it++;
-      //  if (it > initial_measurements_)
-      //  {
-      //    double offset_x = sum_dist_x/initial_measurements_;
-      //    double offset_y = sum_dist_y/initial_measurements_;
-      //  }
-      //}
 
       // Filter by distance
       if (dist > sync_disp_th_ + sync_prop_th_*odom_disp) // TODO: sync_disp_th_ can be extracted from the sensor covariance sync_dist_th_ is a kind of odometry drift
@@ -302,15 +292,41 @@ public:
     geometry_msgs::Pose modem_B_new;
     pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
 
-    
+    // Initial filter
+    if (it_ == 0)  
+    {
+      last_gps_map_ = ekf_map_;
+    }
+    if (it_ <= initial_measurements_)
+    {
+      sum_dist_x_ = last_gps_map_.pose.pose.position.x - modem_B_new.position.x + sum_dist_x_;
+      sum_dist_y_ = last_gps_map_.pose.pose.position.y - modem_B_new.position.y + sum_dist_y_;
+      it_++;
+      ROS_INFO_STREAM("[" << node_name_ << "]: Averaging USBL/GPS offset: " << it_ << "/" << initial_measurements_);
+      if (it_ > initial_measurements_)
+      {
+        offset_x_ = sum_dist_x_/initial_measurements_;
+        offset_y_ = sum_dist_y_/initial_measurements_;
+        ROS_INFO_STREAM("[" << node_name_ << "]: Obtained USBL/GPS offset: x =" << offset_x_ << "  /  y =" << offset_y_);
+      }
+      else
+      {
+      return;
+     }
+    }
+
+    // Add offset
+    //modem_B_new.position.x += offset_x_;
+    //modem_B_new.position.y += offset_y_;
+
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
     modem_update.header.frame_id = frame_modem_ + "_" + frame_suffix_;
     modem_update.header.stamp = ros::Time(last_odom_stamp);
     modem_update.pose.pose = modem_B_new;
-    modem_update.pose.covariance[0] = usbl_cov_; //usbl_msg.pose.covariance[0];
-    modem_update.pose.covariance[7] = usbl_cov_; //usbl_msg.pose.covariance[7];
-    modem_update.pose.covariance[14] = usbl_cov_; //usbl_msg.pose.covariance[14];
+    modem_update.pose.covariance[0] = usbl_cov_;//usbl_msg.pose.covariance[0];
+    modem_update.pose.covariance[7] = usbl_cov_;//usbl_msg.pose.covariance[7];
+    modem_update.pose.covariance[14] = usbl_cov_;//usbl_msg.pose.covariance[14];
     pub_modem_position_.publish(modem_update);
 
     getDelay(last_odom_stamp, usbl_stamp);
@@ -324,6 +340,7 @@ private:
 
   ros::Subscriber sub_usbl_;
   ros::Subscriber sub_ekfOdom_;
+  ros::Subscriber sub_ekfMap_;
 
   ros::Publisher pub_modem_position_;
   ros::Publisher pub_modem_used_positions_per_;
@@ -338,6 +355,8 @@ private:
   tf::TransformBroadcaster br_;
   vector<double> odom_stamps_;
   vector<nav_msgs::Odometry> odom_hist_;
+  vector<double>  map_stamps_;
+  vector<nav_msgs::Odometry> map_hist_;
   tf::TransformListener listener_;
   bool ekf_init_;
   nav_msgs::Odometry gt_odom_;
@@ -349,6 +368,8 @@ private:
   tf::Vector3 last_odom_sync_;
   tf::Vector3 last_usbl_sync_;
 
+  nav_msgs::Odometry last_gps_map_;
+
   double sync_time_th_;
   double sync_prop_th_;
   double sync_disp_th_;
@@ -358,6 +379,12 @@ private:
   int percentage_queue_len_;
   int odom_queue_len_;
   int initial_measurements_;
+
+  int it_;
+  double sum_dist_x_;
+  double sum_dist_y_;
+  double offset_x_;
+  double offset_y_;
 };
 
 
