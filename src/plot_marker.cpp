@@ -76,11 +76,11 @@ public:
   {
     try
     {
-      listener_.waitForTransform("/map", frame_id_, ros::Time(0), ros::Duration(2));
+      listener_.waitForTransform("/map", frame_id_, ros::Time(0), ros::Duration(6));
       listener_.lookupTransform("/map", frame_id_, ros::Time(0), map2origin);
     }
     catch (tf::TransformException ex){
-      ROS_ERROR_STREAM("[" << node_name_ << "]: Received an exception trying to transform a USBL point: " << ex.what());
+      ROS_ERROR_STREAM("[" << node_name_ << "]: Received an exception trying to transform marker position: " << ex.what());
     }
   }
 
