@@ -35,7 +35,7 @@ public:
     nhp_.param("frames/map", frame_map_, string("map"));
     nhp_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
     nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
-    nhp_.param("sensors/usbl/covariance", cov_usbl_, 4.0);
+    nhp_.param("sensors/usbl/covariance", cov_usbl_, 3.0);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
@@ -67,7 +67,7 @@ public:
     usbl2modem.pose.position.z = (float)usbllong->U;
     usbl2modem.covariance[0] = cov_usbl_;
     usbl2modem.covariance[7] = cov_usbl_;
-    usbl2modem.covariance[13] = cov_usbl_;
+    usbl2modem.covariance[14] = cov_usbl_;
     transformAndPublish(usbl2modem, origin2buoy, usbllong->header.stamp);
   }
 
@@ -120,10 +120,9 @@ protected:
     origin2buoy.pose.position.x = north_buoy;
     origin2buoy.pose.position.y = east_buoy;
     origin2buoy.pose.position.z = 0.0;
-    for (int i = 0; i < 9; ++i)
-    {
-      origin2buoy.covariance[i] = buoy->position_covariance[i];
-    }
+    origin2buoy.covariance[0] = buoy->position_covariance[0];
+    origin2buoy.covariance[7] = buoy->position_covariance[4];
+    origin2buoy.covariance[14] = buoy->position_covariance[8];
 
     // Publish buoy NED
     geometry_msgs::PoseWithCovarianceStamped buoy_ned;
