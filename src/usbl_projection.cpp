@@ -22,7 +22,7 @@ class Projection
 {
 public:
 
-  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0), it_(0), sum_dist_x_(0.0), sum_dist_y_(0.0) 
+  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0), it_(0), sum_dist_x_(0.0), sum_dist_y_(0.0)
   {
     // Node name
     node_name_ = ros::this_node::getName();
@@ -248,7 +248,7 @@ public:
     }
     else
     {
-      // Check distance (x,y) 
+      // Check distance (x,y)
       tf::Vector3 usbl_displacement = p_usbl - last_usbl_sync_;
       tf::Vector3 odom_displacement = p_odom - last_odom_sync_;
       tf::Vector3 d = usbl_displacement - odom_displacement;
@@ -258,7 +258,7 @@ public:
 
       //ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
       //ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
-      
+
       // Update
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
@@ -293,7 +293,7 @@ public:
     pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
 
     // Initial filter
-    if (it_ == 0)  
+    if (it_ == 0)
     {
       last_gps_map_ = ekf_map_;
     }

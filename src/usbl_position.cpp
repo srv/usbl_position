@@ -79,12 +79,11 @@ protected:
     //The signal strength is acceptable when measured RSSI values lie between -20 dB and -85 dB.
     float rssi = usbllong->rssi;
 
-    if (-85 >= rssi)
+    if ( rssi >= -85 || rssi < -20)
     {
-      ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = -85dB <" << rssi);
-      flag = false;
+      flag = true;
     }
-    if (rssi > -20)
+    else
     {
       ROS_WARN_STREAM("[" << node_name_ << "]: The signal strength is not acceptable: rssi = " << rssi <<" < -20dB).");
       flag = false;
