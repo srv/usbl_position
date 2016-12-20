@@ -22,7 +22,7 @@ class Projection
 {
 public:
 
-  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0), it_(0), sum_dist_x_(0.0), sum_dist_y_(0.0)
+  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0)
   {
     // Node name
     node_name_ = ros::this_node::getName();
@@ -38,7 +38,6 @@ public:
     nhp_.param("sensors/usbl/odom_queue_len", odom_queue_len_, 1000);
     nhp_.param("sensors/usbl/percentage_queue_len", percentage_queue_len_, 100);
     nhp_.param("sensors/usbl/covariance", usbl_cov_, 6.0);
-    nhp_.param("sensors/usbl/initial_measurements", initial_measurements_, 0);
 
     // Subscribers
     sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
@@ -292,33 +291,6 @@ public:
     geometry_msgs::Pose modem_B_new;
     pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
 
-    // Initial filter
-    if (it_ == 0)
-    {
-      last_gps_map_ = ekf_map_;
-    }
-    if (it_ <= initial_measurements_)
-    {
-      sum_dist_x_ = last_gps_map_.pose.pose.position.x - modem_B_new.position.x + sum_dist_x_;
-      sum_dist_y_ = last_gps_map_.pose.pose.position.y - modem_B_new.position.y + sum_dist_y_;
-      it_++;
-      ROS_INFO_STREAM("[" << node_name_ << "]: Averaging USBL/GPS offset: " << it_ << "/" << initial_measurements_);
-      if (it_ > initial_measurements_)
-      {
-        offset_x_ = sum_dist_x_/initial_measurements_;
-        offset_y_ = sum_dist_y_/initial_measurements_;
-        ROS_INFO_STREAM("[" << node_name_ << "]: Obtained USBL/GPS offset: x =" << offset_x_ << "  /  y =" << offset_y_);
-      }
-      else
-      {
-      return;
-     }
-    }
-
-    // Add offset
-    //modem_B_new.position.x += offset_x_;
-    //modem_B_new.position.y += offset_y_;
-
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
     modem_update.header.frame_id = frame_modem_ + "_" + frame_suffix_;
@@ -378,13 +350,7 @@ private:
   vector<int> used_positions_;
   int percentage_queue_len_;
   int odom_queue_len_;
-  int initial_measurements_;
 
-  int it_;
-  double sum_dist_x_;
-  double sum_dist_y_;
-  double offset_x_;
-  double offset_y_;
 };
 
 
