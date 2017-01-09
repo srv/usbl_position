@@ -37,9 +37,36 @@ public:
     nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
     nhp_.param("sensors/usbl/covariance", cov_usbl_, 3.0);
 
+    // Subscribers
+    sub_buoy_ = nh_.subscribe("/sensors/buoy", 1, &Position::buoyCallback, this);
+
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
     pub_buoy_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("buoy_ned", 10);
+  }
+
+  void buoyCallback(const sensor_msgs::NavSatFix::ConstPtr& buoy)
+  {
+    geometry_msgs::PoseWithCovariance origin2buoy;
+    if (!getBuoyPose(buoy, origin2buoy)) return;
+
+    // Publish buoy NED
+    geometry_msgs::PoseWithCovarianceStamped buoy_ned;
+    buoy_ned.header.stamp = buoy->header.stamp;
+    buoy_ned.pose.pose.position.x = origin2buoy.pose.position.x;
+    buoy_ned.pose.pose.position.y = origin2buoy.pose.position.y;
+    buoy_ned.pose.pose.position.z = origin2buoy.pose.position.z;
+    buoy_ned.pose.covariance = origin2buoy.covariance;
+
+    pub_buoy_.publish(buoy_ned);
+
+    // Publish  Buoy TF
+    tf::Transform tf_buoy;
+    tf::Vector3 tf_buoy_v(buoy_ned.pose.pose.position.x, buoy_ned.pose.pose.position.y, 0.0);
+    tf::Quaternion tf_buoy_q(0.0, 0.0, 0.0, 1);
+    tf_buoy.setOrigin(tf_buoy_v);
+    tf_buoy.setRotation(tf_buoy_q);
+    broadcaster_.sendTransform(tf::StampedTransform(tf_buoy, buoy->header.stamp, frame_map_, frame_buoy_));
   }
 
   void usbllongCallback(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong,
@@ -123,23 +150,6 @@ protected:
     origin2buoy.covariance[7] = buoy->position_covariance[4];
     origin2buoy.covariance[14] = buoy->position_covariance[8];
 
-    // Publish buoy NED
-    geometry_msgs::PoseWithCovarianceStamped buoy_ned;
-    buoy_ned.header.stamp = buoy->header.stamp;
-    buoy_ned.pose.pose.position.x = north_buoy;
-    buoy_ned.pose.pose.position.y = east_buoy;
-    buoy_ned.pose.pose.position.z = depth_buoy;
-    buoy_ned.pose.covariance = origin2buoy.covariance;
-
-    pub_buoy_.publish(buoy_ned);
-
-    // Publish  Buoy TF
-    tf::Transform tf_buoy;
-    tf::Vector3 tf_buoy_v(north_buoy, east_buoy, 0.0);
-    tf::Quaternion tf_buoy_q(0.0, 0.0, 0.0, 1);
-    tf_buoy.setOrigin(tf_buoy_v);
-    tf_buoy.setRotation(tf_buoy_q);
-    broadcaster_.sendTransform(tf::StampedTransform(tf_buoy, buoy->header.stamp, frame_map_, frame_buoy_));
     return true;
   }
 
@@ -224,6 +234,7 @@ private:
 
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;
+  ros::Subscriber sub_buoy_;
   ros::Publisher pub_modem_;
   ros::Publisher pub_buoy_;
   tf::TransformListener listener_;

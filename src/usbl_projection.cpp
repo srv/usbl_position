@@ -324,7 +324,6 @@ private:
   string frame_base_link_;
 
   boost::mutex mutex_;
-  tf::TransformBroadcaster br_;
   vector<double> odom_stamps_;
   vector<nav_msgs::Odometry> odom_hist_;
   vector<double>  map_stamps_;
