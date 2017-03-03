@@ -1,0 +1,47 @@
+ <launch>
+ 	<!-- SENSORS -->
+<!--   	<arg name="enableImu"   default="true"/>
+	<arg name="enableDepth" default="true"/>
+	<arg name="enableDvl"   default="true"/>
+	<arg name="enableGps"   default="true"/>
+	<arg name="enableModem" default="true"/>
+	<arg name="enableVO"    default="false"/>
+ -->
+
+	<arg name="bagfileName" default="/home/eric/bagfiles/2016_05_25_soller/2016-05-25-11-47-39_0.bag" />
+	<arg name="paramName"   default="/home/eric/bagfiles/2016_05_25_soller/20160525_094630_params.yaml" />
+	<arg name="place" default="soller_base_naval.yaml"/>
+
+	<!-- Bagfile play -->
+	<param name="use_sim_time" value="true"/>
+	<node name="rosbag" pkg="rosbag" type="play" args="--clock $(arg bagfileName)"/>
+
+	<!-- Bagfile record -->
+  	<node name="topic_logger" pkg="turbot" type="topic_logger.py" respawn="false"/>
+
+	<!-- Load params -->
+	<rosparam command="load" file="$(arg paramName)"/>
+
+	<!-- USBL POSITION -->
+	<node pkg="usbl_position" name="usbl_position" type="usbl_position" output="screen">
+	  <remap from="/usbl_position/modem_delayed" to="/sensors/modem_delayed"/>
+	  <remap from="/usbl_position/buoy_ned" to="/sensors/buoy_ned"/>
+	</node>
+
+
+	<!-- NAVIGATION STACK -->
+<!-- 	<include file="$(find turbot)/launch/modules/navigation_stack.launch">
+		<arg name="enableImu"   value="$(arg enableImu)"/>
+		<arg name="enableDepth" value="$(arg enableDepth)"/>
+		<arg name="enableDvl"   value="$(arg enableDvl)"/>
+		<arg name="enableGps"   value="$(arg enableGps)"/>
+		<arg name="enableModem" value="$(arg enableModem)"/>
+		<arg name="enableVO"    value="$(arg enableVO)"/>
+		<arg name="place" 	    value="$(arg place)"/>
+	</include> -->
+
+	<!-- NED Origin -->
+    <arg name="placesDir" default="$(find turbot)/config/places"/>
+    <rosparam command="load" file="$(arg placesDir)/$(arg place)"/>
+
+</launch>

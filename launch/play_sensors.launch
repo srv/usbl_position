@@ -1,0 +1,44 @@
+ <launch>
+
+	<!-- BAGFILES SURVEY-->
+	<arg name="bagfileRoute"  default="/home/eric/bagfiles/2016_09_13_valldemossa/" />
+	<arg name="bagfileName0"  default="$(arg bagfileRoute)20160913_133301_0.bag" />
+	<arg name="bagfileName1"  default="$(arg bagfileRoute)20160913_133301_1.bag" />
+	<arg name="bagfileName2"  default="$(arg bagfileRoute)20160913_133301_2.bag" />
+	<arg name="bagfileName3"  default="$(arg bagfileRoute)20160913_133301_3.bag" />
+	<arg name="bagfileName4"  default="$(arg bagfileRoute)20160913_133301_4.bag" />
+	<arg name="bagfileName5"  default="$(arg bagfileRoute)20160913_133301_5.bag" />
+	<arg name="bagfileName6"  default="$(arg bagfileRoute)20160913_133301_6.bag" />
+	<arg name="bagfileName7"  default="$(arg bagfileRoute)20160913_133301_7.bag" />
+	<arg name="bagfileName8"  default="$(arg bagfileRoute)20160913_133301_8.bag" />
+	<arg name="bagfileNames" default="$(arg bagfileName0) $(arg bagfileName1) $(arg bagfileName2) $(arg bagfileName3) $(arg bagfileName4) $(arg bagfileName5) $(arg bagfileName6) $(arg bagfileName7) $(arg bagfileName8)" />
+
+
+	<!-- LOAD BAGFILES-->
+	<arg name="topics" default="/control/trajectory_path
+								/control/waypoint_marker
+								/sensors/depth_map
+								/sensors/depth_odom
+								/sensors/depth_raw
+								/sensors/dvl
+								/sensors/dvl_altitude
+								/sensors/dvl_raw
+								/sensors/imu
+								/sensors/imu_data
+								/sensors/imu_raw
+								/sensors/modem_delayed_acoustic
+								/sensors/modem_position_delay
+								/sensors/modem_raw
+								/sensors/modem_used_positions_per
+								/sensors/temperature_raw
+								/stereo_down/left/camera_info
+								/stereo_down/left/image_raw
+								/stereo_down/right/camera_info
+								/stereo_down/right/image_raw
+								/tf" />
+
+	<param name="use_sim_time" value="true"/>
+	<node name="rosbag" pkg="rosbag" type="play" args=" --clock $(arg bagfileNames) --topics $(arg topics) --start=38">
+	</node>
+
+</launch>

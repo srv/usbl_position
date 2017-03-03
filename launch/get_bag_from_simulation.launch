@@ -1,0 +1,30 @@
+<launch>
+	<arg name="Trajectory" default="$(find usbl_position)/missions/survey.yaml"/>
+	<arg name="Covariance" default="[0.08,0.08,0.08]"/>
+	<arg name="CovarianceSensor" default="[0.5,0.5,0.5]"/>
+	<arg name="Drift_imu" default="[0.05]"/>
+	<arg name="Drift_dvl" default="[0.0005]"/>
+  	<arg name="bagfileName"   default="''"/>
+
+	<!-- SIMULATION -->
+	<include file="$(find turbot)/launch/simulation.launch">
+		<arg name="bagfileName"   value="$(arg bagfileName)"/>
+    </include>
+	<!-- Load Params -->
+	<rosparam command="load" file="$(arg Trajectory)"/>
+	<rosparam param="sim_nav_sensors/modem/position_covariance_gen" subst_value="True">$(arg Covariance)</rosparam>
+	<rosparam param="sim_nav_sensors/modem/position_covariance" subst_value="True">$(arg CovarianceSensor)</rosparam>
+	<rosparam param="sim_nav_sensors/imu/drift" subst_value="True">$(arg Drift_imu)</rosparam>
+	<rosparam param="sim_nav_sensors/dvl/drift" subst_value="True">$(arg Drift_dvl)</rosparam>
+
+	<!-- Trajectory node -->
+	<node pkg="usbl_position" name="traj2bag" type="traj2bag"/>
+
+	<!-- Analysis node -->
+	<node pkg="usbl_position" name="usbl_analysis" type="usbl_analysis">
+		<remap from="/error_ekf_map" to="/analysis/error_ekf_map"/>
+	    <remap from="/error_ekf_odom" to="/analysis/error_ekf_odom"/>
+	    <remap from="/error_modem_raw" to="/analysis/error_modem_raw"/>
+    </node>
+
+</launch>
