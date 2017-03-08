@@ -30,12 +30,11 @@ public:
     node_name_ = ros::this_node::getName();
     ROS_INFO_STREAM("[" << node_name_ << "]: Running");
 
-
     // Get Params
-    nhp_.param("frames/map", frame_map_, string("map"));
-    nhp_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
-    nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
-    nhp_.param("sensors/usbl/covariance", cov_usbl_, 3.0);
+    nh_.param("/frames/map", frame_map_, string("map"));
+    nh_.param("/frames/sensors/usbl", frame_usbl_, string("usbl"));
+    nh_.param("/frames/sensors/buoy", frame_buoy_, string("buoy"));
+    nh_.param("/sensors/usbl_covariance", cov_usbl_, 6.0);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
