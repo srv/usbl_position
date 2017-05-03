@@ -26,7 +26,7 @@ find_package(catkin REQUIRED
 	rospy
 	std_msgs
 	geometry_msgs
-	evologics_ros
+	evologics_ros_sync
   auv_msgs
   control
 	safety
@@ -46,7 +46,7 @@ catkin_package(
   rospy
   roscpp
   safety
-  evologics_ros
+  evologics_ros_sync
   auv_msgs
   control)
 
@@ -71,10 +71,6 @@ add_dependencies(plot_marker ${catkin_EXPORTED_TARGETS})
 
 add_executable(usbl_analysis src/usbl_analysis.cpp)
 target_link_libraries(usbl_analysis ${catkin_LIBRARIES})
-
-add_executable(usbl_comm src/usbl_comm.cpp)
-target_link_libraries(usbl_comm ${catkin_LIBRARIES})
-add_dependencies(usbl_comm ${catkin_EXPORTED_TARGETS})
 
 add_executable(traj2bag src/traj2bag.cpp)
 target_link_libraries(traj2bag ${catkin_LIBRARIES})
