@@ -1,23 +1,22 @@
 #include "ros/ros.h"
-#include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include "geometry_msgs/PoseWithCovariance.h"
-#include "geometry_msgs/Pose.h"
-#include "geometry_msgs/Vector3Stamped.h"
-#include "auv_msgs/NavSts.h"
-#include "evologics_ros/AcousticModemUSBLLONG.h"
-#include "evologics_ros/AcousticModemUSBLANGLES.h"
 #include <cmath>
-
-#include <sensor_msgs/NavSatFix.h>
 #include "utils/ned.h"
 #include <pose_cov_ops/pose_cov_ops.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_broadcaster.h>
-#include <std_srvs/Empty.h>
+
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
+#include "geometry_msgs/PoseWithCovariance.h"
+#include "geometry_msgs/Pose.h"
+#include "auv_msgs/NavSts.h"
+#include "evologics_ros_sync/EvologicsUsbllong.h"
+#include "sensor_msgs/NavSatFix.h"
+#include "tf/transform_datatypes.h"
+#include "tf/transform_listener.h"
+#include "tf/transform_broadcaster.h"
+#include "std_srvs/Empty.h"
+
 
 using namespace std;
 
@@ -30,12 +29,14 @@ public:
     node_name_ = ros::this_node::getName();
     ROS_INFO_STREAM("[" << node_name_ << "]: Running");
 
-
     // Get Params
-    nhp_.param("frames/map", frame_map_, string("map"));
-    nhp_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
-    nhp_.param("frames/sensors/buoy", frame_buoy_, string("buoy"));
-    nhp_.param("sensors/usbl/covariance", cov_usbl_, 3.0);
+    nh_.param("/frames/map", frame_map_, string("map"));
+    nh_.param("/frames/sensors/usbl", frame_usbl_, string("usbl"));
+    nh_.param("/frames/sensors/buoy", frame_buoy_, string("buoy"));
+    nh_.param("/sensors/usbl/covariance", cov_usbl_, 6.0);
+    nh_.param("/sensors/usbl/rssi_max", rssi_max_, -20.0);
+    nh_.param("/sensors/usbl/rssi_min", rssi_min_, -85.0);
+    nh_.param("/sensors/usbl/integrity_min", integrity_min_, 100.0);
 
     // Subscribers
     sub_buoy_ = nh_.subscribe("/sensors/buoy", 1, &Position::buoyCallback, this);
@@ -57,7 +58,6 @@ public:
     buoy_ned.pose.pose.position.y = origin2buoy.pose.position.y;
     buoy_ned.pose.pose.position.z = origin2buoy.pose.position.z;
     buoy_ned.pose.covariance = origin2buoy.covariance;
-
     pub_buoy_.publish(buoy_ned);
 
     // Publish  Buoy TF
@@ -69,9 +69,11 @@ public:
     broadcaster_.sendTransform(tf::StampedTransform(tf_buoy, buoy->header.stamp, frame_map_, frame_buoy_));
   }
 
-  void usbllongCallback(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong,
+
+  void usbllongCallback(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong,
                         const sensor_msgs::NavSatFix::ConstPtr& buoy)
   {
+    ROS_INFO_STREAM("[" << node_name_ << "]: Received usbllong msg");
     // Get the static transform from buoy to usbl (just once)
     if (!buoy2usbl_catched_)
     {
@@ -82,8 +84,10 @@ public:
     }
 
     // Conditions
+    ROS_INFO_STREAM("[" << node_name_ << "]: Check msg quality");
     if (!checkMsgQuality(usbllong)) return;
 
+    ROS_INFO_STREAM("[" << node_name_ << "]: Transform to /usbl frame_id");
     geometry_msgs::PoseWithCovariance origin2buoy;
     if (!getBuoyPose(buoy, origin2buoy)) return;
 
@@ -91,22 +95,24 @@ public:
     geometry_msgs::PoseWithCovariance usbl2modem;
     usbl2modem.pose.position.x = (float)usbllong->N;
     usbl2modem.pose.position.y = (float)usbllong->E;
-    usbl2modem.pose.position.z = (float)usbllong->U;
+    usbl2modem.pose.position.z = (float)usbllong->D;
     usbl2modem.covariance[0] = cov_usbl_;
     usbl2modem.covariance[7] = cov_usbl_;
     usbl2modem.covariance[14] = cov_usbl_;
+
+    ROS_INFO_STREAM("[" << node_name_ << "]: Publish modem delayed position");
     transformAndPublish(usbl2modem, origin2buoy, usbllong->header.stamp);
   }
 
 protected:
 
-  bool checkMsgQuality(const evologics_ros::AcousticModemUSBLLONG::ConstPtr& usbllong) // TODO filtr also the gps
+  bool checkMsgQuality(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong) // TODO filtr also the gps
   {
     bool flag = true;
+
     //The signal strength is acceptable when measured RSSI values lie between -20 dB and -85 dB.
     float rssi = usbllong->rssi;
-
-    if ( rssi >= -85 || rssi < -20)
+    if ( rssi >= rssi_min_ || rssi < rssi_max_)
     {
       flag = true;
     }
@@ -118,7 +124,7 @@ protected:
 
     //An acoustic link is considered weak if the Signal Integrity Level value is less than 100
     float integrity = usbllong->integrity;
-    if (integrity < 100)
+    if (integrity < integrity_min_)
     {
       ROS_WARN_STREAM("[" << node_name_ << "]: Signal Integrity Level is not acceptable: integrity = " << integrity <<" (integrity < 100).");
       flag = false;
@@ -153,20 +159,6 @@ protected:
     return true;
   }
 
-// USBLANGLES
-  // void spheric2cartesian(const double& bearing,
-  //                        const double& elevation,
-  //                        const double& depth,
-  //                        double& x,
-  //                        double& y,
-  //                        double& z)
-  // {
-  //   //x = depth * tan(elevation) * cos(bearing);
-  //   //y = depth * tan(elevation) * sin(bearing);
-  //   x = depth * sin(bearing) / tan(elevation);
-  //   y = depth * cos(bearing) / tan(elevation);
-  //   z = depth; //TODO: Integrate depth of the USBL
-  // }
 
   bool getNedOrigin(double& ned_origin_lat, double& ned_origin_lon)
   {
@@ -250,6 +242,9 @@ private:
   string frame_buoy_;
   string frame_usbl_;
   double cov_usbl_;
+  double rssi_max_;
+  double rssi_min_;
+  double integrity_min_;
 };
 
 
@@ -261,11 +256,11 @@ int main(int argc, char **argv)
   Position usbl_positioning(nh);
 
   // Message sync
-  message_filters::Subscriber<evologics_ros::AcousticModemUSBLLONG> usbllong_sub(nh, "/sensors/usbllong", 50);
+  message_filters::Subscriber<evologics_ros_sync::EvologicsUsbllong> usbllong_sub(nh, "/sensors/usbllong", 50);
   message_filters::Subscriber<sensor_msgs::NavSatFix> buoy_sub(nh, "/sensors/buoy", 50);
 
   // Define syncs
-  typedef message_filters::sync_policies::ApproximateTime<evologics_ros::AcousticModemUSBLLONG,
+  typedef message_filters::sync_policies::ApproximateTime<evologics_ros_sync::EvologicsUsbllong,
                                                           sensor_msgs::NavSatFix> sync_pool;
   message_filters::Synchronizer<sync_pool> sync(sync_pool(50), usbllong_sub, buoy_sub);
   sync.registerCallback(boost::bind(&Position::usbllongCallback, &usbl_positioning, _1, _2));
