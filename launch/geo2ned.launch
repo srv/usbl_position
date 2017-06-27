@@ -1,6 +1,0 @@
-<launch>
-  <node pkg="usbl_position" name="geo2ned1" type="geo2ned" output="screen">
-    <remap from="/geo" to="/sensors/buoy_raw"/>
-  	<remap from="/ned" to="/sensors/buoy_raw_ned"/>
-  </node>
-</launch>
