@@ -73,7 +73,7 @@ public:
   void usbllongCallback(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong,
                         const sensor_msgs::NavSatFix::ConstPtr& buoy)
   {
-    ROS_INFO_STREAM("[" << node_name_ << "]: Received usbllong msg");
+    // ROS_INFO_STREAM("[" << node_name_ << "]: Received usbllong msg");
     // Get the static transform from buoy to usbl (just once)
     if (!buoy2usbl_catched_)
     {
@@ -84,10 +84,10 @@ public:
     }
 
     // Conditions
-    ROS_INFO_STREAM("[" << node_name_ << "]: Check msg quality");
+    // ROS_INFO_STREAM("[" << node_name_ << "]: Check msg quality");
     if (!checkMsgQuality(usbllong)) return;
 
-    ROS_INFO_STREAM("[" << node_name_ << "]: Transform to /usbl frame_id");
+    // ROS_INFO_STREAM("[" << node_name_ << "]: Transform to /usbl frame_id");
     geometry_msgs::PoseWithCovariance origin2buoy;
     if (!getBuoyPose(buoy, origin2buoy)) return;
 
@@ -100,7 +100,7 @@ public:
     usbl2modem.covariance[7] = cov_usbl_;
     usbl2modem.covariance[14] = cov_usbl_;
 
-    ROS_INFO_STREAM("[" << node_name_ << "]: Publish modem delayed position");
+    // ROS_INFO_STREAM("[" << node_name_ << "]: Publish modem delayed position");
     transformAndPublish(usbl2modem, origin2buoy, usbllong->header.stamp);
   }
 
