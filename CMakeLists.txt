@@ -60,21 +60,3 @@ add_dependencies(usbl_position ${catkin_EXPORTED_TARGETS})
 add_executable(usbl_projection src/usbl_projection.cpp)
 target_link_libraries(usbl_projection ${catkin_LIBRARIES})
 add_dependencies(usbl_projection ${catkin_EXPORTED_TARGETS})
-
-add_executable(plot_path src/plot_path.cpp)
-target_link_libraries(plot_path ${catkin_LIBRARIES})
-add_dependencies(plot_path ${catkin_EXPORTED_TARGETS})
-
-add_executable(plot_marker src/plot_marker.cpp)
-target_link_libraries(plot_marker ${catkin_LIBRARIES})
-add_dependencies(plot_marker ${catkin_EXPORTED_TARGETS})
-
-add_executable(usbl_analysis src/usbl_analysis.cpp)
-target_link_libraries(usbl_analysis ${catkin_LIBRARIES})
-
-add_executable(traj2bag src/traj2bag.cpp)
-target_link_libraries(traj2bag ${catkin_LIBRARIES})
-add_dependencies(traj2bag ${catkin_EXPORTED_TARGETS})
-
-add_executable(geo2ned src/geo2ned.cpp)
-target_link_libraries(geo2ned ${catkin_LIBRARIES})
