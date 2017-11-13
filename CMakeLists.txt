@@ -28,11 +28,9 @@ find_package(catkin REQUIRED
 	geometry_msgs
 	evologics_ros_sync
   auv_msgs
-  control
-	safety
 	tf
 	pose_cov_ops
-	utils
+	ned_tools
 	cmake_modules
 	message_filters
 	)
@@ -45,10 +43,8 @@ catkin_package(
   message_runtime
   rospy
   roscpp
-  safety
   evologics_ros_sync
-  auv_msgs
-  control)
+  auv_msgs)
 
 ## Build node
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
