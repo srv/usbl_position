@@ -32,12 +32,12 @@ public:
     nh_.param("frames/sensors/modem", frame_modem_, string("modem"));
     nh_.param("frames/sensors/origin_suffix", frame_suffix_, string("origin"));
 
-    nhp_.param("sensors/usbl/sync_time_th", sync_time_th_, 0.1);
-    nhp_.param("sensors/usbl/sync_prop_th", sync_prop_th_, 0.5);
-    nhp_.param("sensors/usbl/sync_disp_th", sync_disp_th_, 0.7);
-    nhp_.param("sensors/usbl/odom_queue_len", odom_queue_len_, 1000);
-    nhp_.param("sensors/usbl/percentage_queue_len", percentage_queue_len_, 100);
-    nhp_.param("sensors/usbl/covariance", usbl_cov_, 6.0);
+    nh_.param("sensors/usbl/sync_time_th", sync_time_th_, 0.1);
+    nh_.param("sensors/usbl/sync_prop_th", sync_prop_th_, 0.5);
+    nh_.param("sensors/usbl/sync_disp_th", sync_disp_th_, 0.7);
+    nh_.param("sensors/usbl/odom_queue_len", odom_queue_len_, 1000);
+    nh_.param("sensors/usbl/percentage_queue_len", percentage_queue_len_, 100);
+    nh_.param("sensors/usbl/covariance", usbl_cov_, 6.0);
 
 
     // Subscribers
