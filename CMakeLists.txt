@@ -27,10 +27,11 @@ find_package(catkin REQUIRED
 	std_msgs
 	geometry_msgs
 	evologics_ros_sync
-  auv_msgs
+   auv_msgs
 	tf
 	pose_cov_ops
-	utils
+	cola2_lib
+   cola2_msgs
 	cmake_modules
 	message_filters
 	)
