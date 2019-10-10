@@ -3,7 +3,6 @@ The usbl_position node transforms an USBL relative position into a world NED ref
 The usbl_projction node updates an USBL delayed measurement using odometry estimations, to be launched in the AUV.
 
 MELODIC dependencies
-git clone https://github.com/oceansystemslab/auv_msgs.git
 sudo apt-get install ros-melodic-pose-cov-ops
 
 In the CmakeLists.txt replace:
