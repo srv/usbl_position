@@ -41,14 +41,14 @@ public:
 
 
     // Subscribers
-    sub_usbl_ =     nh_.subscribe("/sensors/modem_delayed_acoustic", 1, &Projection::usblCallback, this);
-    sub_ekfOdom_ =  nh_.subscribe("/ekf_odom/odometry", 1, &Projection::ekfOdomCallback, this);
-    sub_ekfMap_ =  nh_.subscribe("/ekf_map/odometry", 1, &Projection::ekfMapCallback, this);
+    sub_usbl_ =     nh_.subscribe("modem_delayed_acoustic", 1, &Projection::usblCallback, this);
+    sub_ekfOdom_ =  nh_.subscribe("ekf_odom", 1, &Projection::ekfOdomCallback, this);
+    sub_ekfMap_ =  nh_.subscribe("ekf_map", 1, &Projection::ekfMapCallback, this);
 
     // Publishers
-    pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("sensors/modem_raw", 1);
-    pub_modem_used_positions_per_ = nh_.advertise<std_msgs::Float64>("sensors/modem_used_positions_per", 1);
-    pub_modem_position_delay_ = nh_.advertise<std_msgs::Float64>("sensors/modem_position_delay", 1);
+    pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_raw", 1);
+    pub_modem_used_positions_per_ = nh_.advertise<std_msgs::Float64>("used_positions_per", 1);
+    pub_modem_position_delay_ = nh_.advertise<std_msgs::Float64>("position_delay", 1);
   }
 
 

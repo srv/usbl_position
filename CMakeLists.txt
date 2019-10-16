@@ -27,7 +27,6 @@ find_package(catkin REQUIRED
 	std_msgs
 	geometry_msgs
 	evologics_ros_sync
-   auv_msgs
 	tf
 	pose_cov_ops
 	cola2_lib
@@ -44,8 +43,7 @@ catkin_package(
   message_runtime
   rospy
   roscpp
-  evologics_ros_sync
-  auv_msgs)
+  evologics_ros_sync)
 
 ## Build node
 include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})

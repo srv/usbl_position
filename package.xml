@@ -52,7 +52,6 @@
   <build_depend>pose_cov_ops</build_depend>
   <build_depend>utils</build_depend>
   <build_depend>cmake_modules</build_depend>
-  <build_depend>auv_msgs</build_depend>
 
   <run_depend>cmake_modules</run_depend>
   <run_depend>utils</run_depend>
@@ -65,6 +64,5 @@
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>std_srvs</run_depend>
-  <run_depend>auv_msgs</run_depend>
 
 </package>

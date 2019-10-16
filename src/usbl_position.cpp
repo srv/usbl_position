@@ -30,15 +30,15 @@ public:
     ROS_INFO_STREAM("[" << node_name_ << "]: Running");
 
     // Get Params
-    nh_.param("/frames/map", frame_map_, string("map"));
-    nh_.param("/frames/sensors/usbl", frame_usbl_, string("usbl"));
-    nh_.param("/sensors/usbl/covariance", cov_usbl_, 6.0);
-    nh_.param("/sensors/usbl/rssi_max", rssi_max_, -20.0);
-    nh_.param("/sensors/usbl/rssi_min", rssi_min_, -85.0);
-    nh_.param("/sensors/usbl/integrity_min", integrity_min_, 100.0);
+    nh_.param("frames/map", frame_map_, string("world_ned"));
+    nh_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
+    nh_.param("sensors/usbl/covariance", cov_usbl_, 6.0);
+    nh_.param("sensors/usbl/rssi_max", rssi_max_, -20.0);
+    nh_.param("sensors/usbl/rssi_min", rssi_min_, -85.0);
+    nh_.param("sensors/usbl/integrity_min", integrity_min_, 100.0);
 
     // Subscribers
-    sub_usbllong_ = nh_.subscribe("/sensors/usbllong", 1, &Position::UsbllongCb, this);
+    sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
@@ -114,6 +114,7 @@ protected:
     modem_pose_relative.covariance[0] = cov_usbl_;
     modem_pose_relative.covariance[7] = cov_usbl_;
     modem_pose_relative.covariance[14] = cov_usbl_;
+    modem_pose_relative.pose.orientation.w = 1.0; // Quaternion of module 1 required for mrpt lib
   }
 
   void Transform(const geometry_msgs::PoseWithCovariance& usbl_pose,
@@ -121,6 +122,9 @@ protected:
                  geometry_msgs::PoseWithCovariance& modem_pose)
   {
     pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose);
+    ROS_INFO_STREAM("[" << node_name_ << "]: usbl_pose \n" << usbl_pose.pose.position);
+    ROS_INFO_STREAM("[" << node_name_ << "]: modem_pose_relative \n" << modem_pose_relative.pose.position);
+    ROS_INFO_STREAM("[" << node_name_ << "]: modem_pose \n" << modem_pose.pose.position);
   }
 
   void Publish(const geometry_msgs::PoseWithCovariance& modem_pose,
