@@ -47,8 +47,8 @@ public:
 
     // Publishers
     pub_modem_position_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_raw", 1);
-    pub_modem_used_positions_per_ = nh_.advertise<std_msgs::Float64>("used_positions_per", 1);
-    pub_modem_position_delay_ = nh_.advertise<std_msgs::Float64>("position_delay", 1);
+    pub_modem_used_positions_per_ = nh_.advertise<std_msgs::Float64>("~used_positions_per", 1);
+    pub_modem_position_delay_ = nh_.advertise<std_msgs::Float64>("~position_delay", 1);
   }
 
 

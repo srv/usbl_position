@@ -122,9 +122,6 @@ protected:
                  geometry_msgs::PoseWithCovariance& modem_pose)
   {
     pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose);
-    ROS_INFO_STREAM("[" << node_name_ << "]: usbl_pose \n" << usbl_pose.pose.position);
-    ROS_INFO_STREAM("[" << node_name_ << "]: modem_pose_relative \n" << modem_pose_relative.pose.position);
-    ROS_INFO_STREAM("[" << node_name_ << "]: modem_pose \n" << modem_pose.pose.position);
   }
 
   void Publish(const geometry_msgs::PoseWithCovariance& modem_pose,
