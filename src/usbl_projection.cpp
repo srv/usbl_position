@@ -22,7 +22,7 @@ class Projection
 {
 public:
 
-  Projection() : nhp_("~"), ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0)
+  Projection() : ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0)
   {
     // Node name
     node_name_ = ros::this_node::getName();
@@ -309,7 +309,6 @@ public:
 
 private:
   ros::NodeHandle nh_;
-  ros::NodeHandle nhp_;
 
   ros::Subscriber sub_usbl_;
   ros::Subscriber sub_ekfOdom_;
