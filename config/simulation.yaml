@@ -1,0 +1,7 @@
+sim_nav_sensors/usbl/period: 1.0
+sim_nav_sensors/usbl/drift: [0.0, 0.0, 0.0] 
+sim_nav_sensors/usbl/delay: 0.5
+sim_nav_sensors/usbl/position_covariance: [0.9, 0.9, 0.9]
+sim_nav_sensors/usbl/position_covariance_gen: [0.45, 0.45, 0.45]
+sim_nav_sensors/gps_min_depth: 0.3
+dynamics/topic_name: 'dynamics/odometry'

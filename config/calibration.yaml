@@ -1,0 +1,2 @@
+usbl_calibration/calibration_file_path: '/tmp'
+affine_matrix: [[1, 0, 0, 0],[0, 1, 0, 0],[0, 0, 1, 0],[0, 0, 0, 1]]
