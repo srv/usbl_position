@@ -37,7 +37,7 @@ public:
     nh_.param("sensors/usbl/sync_disp_th", sync_disp_th_, 0.7);
     nh_.param("sensors/usbl/odom_queue_len", odom_queue_len_, 1000);
     nh_.param("sensors/usbl/percentage_queue_len", percentage_queue_len_, 100);
-    nh_.param("sensors/usbl/covariance", usbl_cov_, 6.0);
+    nh_.param("sensors/usbl/covariance", usbl_cov_, 4.0);
 
 
     // Subscribers
@@ -294,7 +294,7 @@ public:
 
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
-    modem_update.header.frame_id = frame_modem_ + "_" + frame_suffix_;
+    modem_update.header.frame_id = frame_modem_ + frame_suffix_;
     modem_update.header.stamp = ros::Time(last_odom_stamp);
     modem_update.pose.pose = modem_B_new;
     modem_update.pose.covariance[0] = usbl_cov_;//usbl_msg.pose.covariance[0];
