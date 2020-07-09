@@ -200,6 +200,7 @@ public:
 
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
+    ROS_INFO_STREAM("Recieved USBL measurement");
     used_positions_.push_back(0);
     if ((int)used_positions_.size() > percentage_queue_len_)
       used_positions_.erase(used_positions_.begin());
@@ -208,7 +209,7 @@ public:
     // Wait for odometry msgs to start
     if (ekf_init_ == false) return;
 
-
+    ROS_INFO_STREAM("Wait for transform");
     // Get static Transform sparus2modem only once
     if (!sparus2modem_catched_)
     {
@@ -217,10 +218,11 @@ public:
       else
         return;
     }
-
+    ROS_INFO_STREAM("Project measure");
     // Measurement timestamp
     double usbl_stamp = usbl_msg.header.stamp.toSec();
 
+    ROS_INFO_STREAM("Find odom");
     // Get Old Odometry
     nav_msgs::Odometry odom_at_usbl_stamp;
     nav_msgs::Odometry last_odom;
@@ -228,6 +230,7 @@ public:
     if (!findOdom(usbl_stamp, odom_at_usbl_stamp, last_odom, last_odom_stamp))
       return;
 
+    ROS_INFO_STREAM("Extract positions");
     // Extract positions
     tf::Vector3 p_usbl(usbl_msg.pose.pose.position.x,
                        usbl_msg.pose.pose.position.y,
@@ -236,6 +239,7 @@ public:
                        odom_at_usbl_stamp.pose.pose.position.y,
                        odom_at_usbl_stamp.pose.pose.position.z);
 
+    ROS_INFO_STREAM("Distance threshold");
     // Distance threshold between usbl and odometry measures
     if (!sync_init_)
     {
@@ -248,6 +252,7 @@ public:
     }
     else
     {
+      ROS_INFO_STREAM("Check distance");
       // Check distance (x,y)
       tf::Vector3 usbl_displacement = p_usbl - last_usbl_sync_;
       tf::Vector3 odom_displacement = p_odom - last_odom_sync_;
@@ -256,8 +261,8 @@ public:
       double dist = sqrt(d.x()*d.x() + d.y()*d.y());
       double odom_disp = sqrt(odom_displacement.x()*odom_displacement.x() + odom_displacement.y()*odom_displacement.y());
 
-      //ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
-      //ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
+      ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
+      ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
 
       // Update
       last_usbl_sync_ = p_usbl;
