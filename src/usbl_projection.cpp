@@ -58,7 +58,7 @@ public:
                 nav_msgs::Odometry& last_odom,
                 double& last_odom_stamp)
   {
-    // Absolute value of the differencez
+    // Absolute value of the difference
     vector<double> abs_stamp;
     mutex_.lock();
     for (uint j=0; j<odom_stamps_.size(); j++)
@@ -85,19 +85,21 @@ public:
       min_idx_2 = min_idx + 1;
     }
 
-    if (min_idx < (int)odom_stamps_.size() - 1) // If inside the historial (interpolate)
-    {
-      // Neighbor Odometry Messages
-      nav_msgs::Odometry odom_1 = odom_hist_[min_idx_1];
-      nav_msgs::Odometry odom_2 = odom_hist_[min_idx_2];
-      // Interpolation of neighbor odoms near msg arrival
-      float prop = abs_stamp[min_idx_1] / (abs_stamp[min_idx_1] + abs_stamp[min_idx_2]);
-      odomInterpolation(odom_1, odom_2, prop, odom_for_usbl);
-    }
-    else  // If at the end of the historial (pick the last one)
-    {
-      odom_for_usbl = odom_hist_[min_idx];
-    }
+    odom_for_usbl = odom_hist_[min_idx];
+    // if (min_idx < (int)odom_stamps_.size() - 1) // If inside the historial (interpolate)
+    // {
+    //   // Neighbor Odometry Messages
+    //   ROS_INFO_STREAM("[" << node_name_ << "]: Stamp 1: " << abs_stamp[min_idx_1] << " Stamp 2: " << abs_stamp[min_idx_2]);
+    //   nav_msgs::Odometry odom_1 = odom_hist_[min_idx_1];
+    //   nav_msgs::Odometry odom_2 = odom_hist_[min_idx_2];
+    //   // Interpolation of neighbor odoms near msg arrival
+    //   float prop = abs_stamp[min_idx_1] / (abs_stamp[min_idx_1] + abs_stamp[min_idx_2]);
+    //   odomInterpolation(odom_1, odom_2, prop, odom_for_usbl);
+    // }
+    // else  // If at the end of the historial (pick the last one)
+    // {
+    //   odom_for_usbl = odom_hist_[min_idx];
+    // }
 
     // Reshape hist.
     odom_stamps_.erase(odom_stamps_.begin() , odom_stamps_.begin() + min_idx);
@@ -200,7 +202,6 @@ public:
 
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
-    ROS_INFO_STREAM("Recieved USBL measurement");
     used_positions_.push_back(0);
     if ((int)used_positions_.size() > percentage_queue_len_)
       used_positions_.erase(used_positions_.begin());
@@ -209,7 +210,6 @@ public:
     // Wait for odometry msgs to start
     if (ekf_init_ == false) return;
 
-    ROS_INFO_STREAM("Wait for transform");
     // Get static Transform sparus2modem only once
     if (!sparus2modem_catched_)
     {
@@ -218,11 +218,9 @@ public:
       else
         return;
     }
-    ROS_INFO_STREAM("Project measure");
     // Measurement timestamp
     double usbl_stamp = usbl_msg.header.stamp.toSec();
 
-    ROS_INFO_STREAM("Find odom");
     // Get Old Odometry
     nav_msgs::Odometry odom_at_usbl_stamp;
     nav_msgs::Odometry last_odom;
@@ -230,8 +228,8 @@ public:
     if (!findOdom(usbl_stamp, odom_at_usbl_stamp, last_odom, last_odom_stamp))
       return;
 
-    ROS_INFO_STREAM("Extract positions");
     // Extract positions
+    ROS_INFO_STREAM("[" << node_name_ << "]: Recieved usbllong"  << usbl_msg.pose.pose.position.x << ", " << usbl_msg.pose.pose.position.y << ", " << usbl_msg.pose.pose.position.z);
     tf::Vector3 p_usbl(usbl_msg.pose.pose.position.x,
                        usbl_msg.pose.pose.position.y,
                        usbl_msg.pose.pose.position.z);
@@ -239,37 +237,37 @@ public:
                        odom_at_usbl_stamp.pose.pose.position.y,
                        odom_at_usbl_stamp.pose.pose.position.z);
 
-    ROS_INFO_STREAM("Distance threshold");
     // Distance threshold between usbl and odometry measures
     if (!sync_init_)
     {
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
-      ROS_WARN_STREAM("[" << node_name_ << "]: Restart sync");
       sync_init_ = true;
       return;
     }
     else
     {
-      ROS_INFO_STREAM("Check distance");
       // Check distance (x,y)
       tf::Vector3 usbl_displacement = p_usbl - last_usbl_sync_;
       tf::Vector3 odom_displacement = p_odom - last_odom_sync_;
       tf::Vector3 d = usbl_displacement - odom_displacement;
 
-      double dist = sqrt(d.x()*d.x() + d.y()*d.y());
+      double usbl_disp = sqrt(usbl_displacement.x()*usbl_displacement.x() + usbl_displacement.y()*usbl_displacement.y());
       double odom_disp = sqrt(odom_displacement.x()*odom_displacement.x() + odom_displacement.y()*odom_displacement.y());
+      double dist = sqrt(d.x()*d.x() + d.y()*d.y());
 
-      ROS_INFO_STREAM("USBL: x="<<usbl_displacement.x() << "/ y="<<usbl_displacement.y() <<  "/ z="<<usbl_displacement.z());
-      ROS_INFO_STREAM("USBL: x="<<odom_displacement.x() << "/ y="<<odom_displacement.y() <<  "/ z="<<odom_displacement.z());
+      ROS_INFO_STREAM("[" << node_name_ << "]: USBL: " <<usbl_disp<< " / ODOM: " << odom_disp << " / DIST: " << dist);
+      if (usbl_disp > 10){
+        ROS_INFO_STREAM("[" << node_name_ << "]: KKKKKKKKKKKKKKKKKKKKKKKKkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkKKKKKK");
+      }
 
       // Update
       last_usbl_sync_ = p_usbl;
       last_odom_sync_ = p_odom;
 
       // Filter by distance
-      if (dist > sync_disp_th_ + sync_prop_th_*odom_disp) // TODO: sync_disp_th_ can be extracted from the sensor covariance sync_dist_th_ is a kind of odometry drift
+      if (dist > sync_disp_th_ + sync_prop_th_*odom_disp) // TODO: sync_disp_th_ can be extracted from the sensor covariance, sync_prop_th_ is a kind of odometry drift
       {
         ROS_WARN_STREAM("[" << node_name_ << "]: Big distance between usbl position and ekf position: " << dist << "m (threshold: " << sync_disp_th_ + sync_prop_th_*odom_disp << "m).");
         return;
