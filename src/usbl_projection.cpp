@@ -12,7 +12,7 @@
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-#include <pose_cov_ops/pose_cov_ops.h>
+#include <mrpt/poses/CPose3D.h>
 
 
 
@@ -280,7 +280,7 @@ public:
     geometry_msgs::Pose sparus_B = last_odom.pose.pose;
     geometry_msgs::Pose modem_A;
     geometry_msgs::Pose modem_B;
-    pose_cov_ops::compose(sparus_A, sparus2modem_, modem_A);
+        pose_cov_ops::compose(sparus_A, sparus2modem_, modem_A);
     pose_cov_ops::compose(sparus_B, sparus2modem_, modem_B);
 
     geometry_msgs::Pose delta_odom;
