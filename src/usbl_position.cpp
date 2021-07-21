@@ -95,7 +95,7 @@ protected:
       // usbl_pose.pose.orientation.x = transform.getRotation().x();
       // usbl_pose.pose.orientation.y = transform.getRotation().y();
       // usbl_pose.pose.orientation.z = transform.getRotation().z();
-      // usbl_pose.pose.orientation.w = transform.getRotation().w();
+      usbl_pose.pose.orientation.w = 1.0;
       return true;
     }
     catch (tf::TransformException ex)
