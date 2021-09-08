@@ -160,11 +160,11 @@ private:
   string node_name_;
   string frame_map_;
   string frame_usbl_;
+  string crs_;
   double cov_usbl_;
   double rssi_max_;
   double rssi_min_;
   double integrity_min_;
-  double crs_;
 };
 
 
