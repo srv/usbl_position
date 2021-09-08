@@ -164,6 +164,7 @@ private:
   double rssi_max_;
   double rssi_min_;
   double integrity_min_;
+  double crs_;
 };
 
 
