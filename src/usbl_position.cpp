@@ -36,6 +36,7 @@ public:
     nh_.param("sensors/usbl/rssi_max", rssi_max_, -20.0);
     nh_.param("sensors/usbl/rssi_min", rssi_min_, -85.0);
     nh_.param("sensors/usbl/integrity_min", integrity_min_, 100.0);
+    nh_.param("sensors/usbl/crs", crs_, string("ned"));
 
     // Subscribers
     sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
@@ -92,10 +93,17 @@ protected:
       usbl_pose.pose.position.x = transform.getOrigin().x();
       usbl_pose.pose.position.y = transform.getOrigin().y();
       usbl_pose.pose.position.z = transform.getOrigin().z();
-      usbl_pose.pose.orientation.x = transform.getRotation().x();
-      usbl_pose.pose.orientation.y = transform.getRotation().y();
-      usbl_pose.pose.orientation.z = transform.getRotation().z();
-      usbl_pose.pose.orientation.w = transform.getRotation().w();
+      if (crs_ == "ned")
+      {
+        usbl_pose.pose.orientation.w = 1.0;
+      }
+      else
+      {
+        usbl_pose.pose.orientation.x = transform.getRotation().x();
+        usbl_pose.pose.orientation.y = transform.getRotation().y();
+        usbl_pose.pose.orientation.z = transform.getRotation().z();
+        usbl_pose.pose.orientation.w = transform.getRotation().w();
+      }
       return true;
     }
     catch (tf::TransformException ex)
@@ -108,8 +116,16 @@ protected:
   bool GetPoseMsg(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong,
                   geometry_msgs::PoseWithCovariance& modem_pose_relative)
   {
+    if (crs_ == "ned")
+    {
+    modem_pose_relative.pose.position.x = (float)usbllong->N;
+    modem_pose_relative.pose.position.y = (float)usbllong->E;
+    }
+    else
+    {
     modem_pose_relative.pose.position.x = (float)usbllong->X;
     modem_pose_relative.pose.position.y = (float)usbllong->Y;
+    }
     modem_pose_relative.pose.position.z = (float)usbllong->D;
     modem_pose_relative.covariance[0] = cov_usbl_;
     modem_pose_relative.covariance[7] = cov_usbl_;
