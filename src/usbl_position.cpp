@@ -36,7 +36,7 @@ public:
     nh_.param("sensors/usbl/rssi_max", rssi_max_, -20.0);
     nh_.param("sensors/usbl/rssi_min", rssi_min_, -85.0);
     nh_.param("sensors/usbl/integrity_min", integrity_min_, 100.0);
-    nh_.param("sensors/usbl/crs", crs_, string("ned"));
+    nh_.param("sensors/usbl/crs", crs_, string("xyz"));
 
     // Subscribers
     sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
