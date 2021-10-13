@@ -1,0 +1,11 @@
+<launch>
+
+	<rosparam command = "load" file = "/DATA_B/bagfiles/turbot/2021_09_17/11_28_39/params.yaml"/>
+	
+	<arg name = "bagfile" default = "/DATA_B/bagfiles/turbot/2021_09_17/11_28_39/topics_2021-09-17-11-28-52_0.bag"/>
+	
+	<!-- Play the bagfile -->
+	<node pkg = "rosbag" type = "play" name = "rosbag" args = "--clock $(arg bagfile)" />
+
+
+</launch>
