@@ -12,7 +12,7 @@
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-#include <mrpt/poses/CPose3D.h>
+// #include <mrpt/poses/CPose3D.h>
 
 
 
@@ -278,13 +278,25 @@ public:
     // Delta Odom
     geometry_msgs::Pose sparus_A = odom_at_usbl_stamp.pose.pose;
     geometry_msgs::Pose sparus_B = last_odom.pose.pose;
-    geometry_msgs::Pose modem_A;
-    geometry_msgs::Pose modem_B;
-        pose_cov_ops::compose(sparus_A, sparus2modem_, modem_A);
-    pose_cov_ops::compose(sparus_B, sparus2modem_, modem_B);
+    // geometry_msgs::Pose modem_A;
+    // geometry_msgs::Pose modem_B;
+    // pose_cov_ops::compose(sparus_A, sparus2modem_, modem_A);
+    // pose_cov_ops::compose(sparus_B, sparus2modem_, modem_B);
+    
+    tf::Transform sparus_A_tf ;
+    tf::Transform sparus_B_tf ;
+    tf::Transform sparus2modem_tf ;
+    tf::poseMsgToTF(sparus_A, sparus_A_tf) ;
+    tf::poseMsgToTF(sparus_B, sparus_B_tf) ;
+    tf::poseMsgToTF(sparus2modem_, sparus2modem_tf) ;
 
-    geometry_msgs::Pose delta_odom;
-    pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
+    tf::Transform modem_A_tf = sparus_A_tf * sparus2modem_tf ;
+    tf::Transform modem_B_tf = sparus_B_tf * sparus2modem_tf ;
+
+    // geometry_msgs::Pose delta_odom;
+    // pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
+    
+    tf::Transform delta_odom_tf = modem_B_tf * modem_A_tf ;
 
     // USBL correction
     geometry_msgs::Pose modem_A_new;
@@ -292,9 +304,16 @@ public:
     // Approximate covariances as USBL covariances, odometric covariances are so small //TODO:add justification from odom vel integration
     modem_A_new.orientation = odom_at_usbl_stamp.pose.pose.orientation;
 
+    tf::Transform modem_A_new_tf ;
+    tf::poseMsgToTF(modem_A_new, modem_A_new_tf) ;
+    
     geometry_msgs::Pose modem_B_new;
-    pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
-
+    // pose_cov_ops::compose(modem_A_new, delta_odom, modem_B_new);
+    
+    tf::Transform modem_B_new_tf = modem_A_new_tf * delta_odom_tf.inverse() ;
+    
+    tf::poseTFToMsg(modem_B_new_tf, modem_B_new) ;
+    
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
     modem_update.header.frame_id = frame_modem_ + frame_suffix_;

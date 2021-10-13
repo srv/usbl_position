@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include <cmath>
 #include <cola2_lib/utils/ned.h>
-#include <pose_cov_ops/pose_cov_ops.h>
+//#include <pose_cov_ops/pose_cov_ops.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -38,7 +38,8 @@ public:
     nh_.param("sensors/usbl/integrity_min", integrity_min_, 100.0);
 
     // Subscribers
-    sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
+    //sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
+    sub_usbllong_ = nh_.subscribe("/xiroi/usbllong", 1, &Position::UsbllongCb, this);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
@@ -121,7 +122,20 @@ protected:
                  const geometry_msgs::PoseWithCovariance& modem_pose_relative,
                  geometry_msgs::PoseWithCovariance& modem_pose)
   {
-    pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose);
+    //pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose); TO-DO: rewrite with mrpt
+    tf::Transform usbl_pose_tf ;
+    tf::Transform modem_pose_relative_tf ;
+    
+    tf::poseMsgToTF(usbl_pose.pose, usbl_pose_tf) ;
+    tf::poseMsgToTF(modem_pose_relative.pose, modem_pose_relative_tf) ;
+    
+    tf::Transform modem_pose_tf = usbl_pose_tf * modem_pose_relative_tf ;
+    
+    tf::poseTFToMsg(modem_pose_tf, modem_pose.pose) ;
+    
+    ROS_INFO_STREAM("modem_pose_x" << modem_pose.pose.position.x) ;
+    ROS_INFO_STREAM("modem_pose_y" << modem_pose.pose.position.y) ;
+    ROS_INFO_STREAM("modem_pose_z" << modem_pose.pose.position.z) ;
   }
 
   void Publish(const geometry_msgs::PoseWithCovariance& modem_pose,
