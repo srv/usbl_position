@@ -13,6 +13,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 // #include <mrpt/poses/CPose3D.h>
+#include <typeinfo>
 
 
 
@@ -23,7 +24,7 @@ class Projection
 public:
 
   Projection() : ekf_init_(false), sparus2modem_catched_(false), sync_init_(false), used_positions_(0)
-  {
+  { 
     // Node name
     node_name_ = ros::this_node::getName();
 
@@ -202,6 +203,7 @@ public:
 
   void usblCallback(const geometry_msgs::PoseWithCovarianceStamped& usbl_msg)
   {
+
     used_positions_.push_back(0);
     if ((int)used_positions_.size() > percentage_queue_len_)
       used_positions_.erase(used_positions_.begin());
@@ -291,13 +293,18 @@ public:
     tf::poseMsgToTF(sparus2modem_, sparus2modem_tf) ;
 
     tf::Transform modem_A_tf = sparus_A_tf * sparus2modem_tf ;
+    geometry_msgs::Pose modem_A ;
+    tf::poseTFToMsg(modem_A_tf, modem_A) ;
+    
     tf::Transform modem_B_tf = sparus_B_tf * sparus2modem_tf ;
+    geometry_msgs::Pose modem_B ;
+    tf::poseTFToMsg(modem_B_tf, modem_B) ;
 
     // geometry_msgs::Pose delta_odom;
     // pose_cov_ops::inverseCompose(modem_B, modem_A, delta_odom);
+        
+    tf::Transform delta_odom_tf = modem_B_tf.inverseTimes(modem_A_tf) ;
     
-    tf::Transform delta_odom_tf = modem_B_tf * modem_A_tf ;
-
     // USBL correction
     geometry_msgs::Pose modem_A_new;
     modem_A_new = usbl_msg.pose.pose;
@@ -313,6 +320,10 @@ public:
     tf::Transform modem_B_new_tf = modem_A_new_tf * delta_odom_tf.inverse() ;
     
     tf::poseTFToMsg(modem_B_new_tf, modem_B_new) ;
+    
+    ROS_INFO_STREAM("X modem_B_new_tf: " << modem_B_new.position.x) ;
+    ROS_INFO_STREAM("Y modem_B_new_tf: " << modem_B_new.position.y) ;
+    ROS_INFO_STREAM("Z modem_B_new_tf: " << modem_B_new.position.z) ;
     
     // Create message
     geometry_msgs::PoseWithCovarianceStamped modem_update;
