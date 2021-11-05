@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include <cmath>
 #include <cola2_lib/utils/ned.h>
-//#include <pose_cov_ops/pose_cov_ops.h>
+#include <pose_cov_ops/pose_cov_ops.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
@@ -31,16 +31,14 @@ public:
 
     // Get Params
     nh_.param("frames/map", frame_map_, string("world_ned"));
-    nh_.param("frames/sensors/usbl", frame_usbl_, string("xiroi/usbl"));
+    nh_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
     nh_.param("sensors/usbl/covariance", cov_usbl_, 4.0);
     nh_.param("sensors/usbl/rssi_max", rssi_max_, -20.0);
     nh_.param("sensors/usbl/rssi_min", rssi_min_, -85.0);
     nh_.param("sensors/usbl/integrity_min", integrity_min_, 100.0);
-    nh_.param("sensors/usbl/crs", crs_, string("xyz"));
 
     // Subscribers
-    //sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
-    sub_usbllong_ = nh_.subscribe("/xiroi/usbllong", 1, &Position::UsbllongCb, this);
+    sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
 
     //Publishers
     pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
@@ -94,17 +92,10 @@ protected:
       usbl_pose.pose.position.x = transform.getOrigin().x();
       usbl_pose.pose.position.y = transform.getOrigin().y();
       usbl_pose.pose.position.z = transform.getOrigin().z();
-      if (crs_ == "ned")
-      {
-        usbl_pose.pose.orientation.w = 1.0;
-      }
-      else
-      {
-        usbl_pose.pose.orientation.x = transform.getRotation().x();
-        usbl_pose.pose.orientation.y = transform.getRotation().y();
-        usbl_pose.pose.orientation.z = transform.getRotation().z();
-        usbl_pose.pose.orientation.w = transform.getRotation().w();
-      }
+      usbl_pose.pose.orientation.x = transform.getRotation().x();
+      usbl_pose.pose.orientation.y = transform.getRotation().y();
+      usbl_pose.pose.orientation.z = transform.getRotation().z();
+      usbl_pose.pose.orientation.w = transform.getRotation().w();
       return true;
     }
     catch (tf::TransformException ex)
@@ -117,17 +108,9 @@ protected:
   bool GetPoseMsg(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong,
                   geometry_msgs::PoseWithCovariance& modem_pose_relative)
   {
-    if (crs_ == "ned")
-    {
-    modem_pose_relative.pose.position.x = (float)usbllong->N;
-    modem_pose_relative.pose.position.y = (float)usbllong->E;
-    }
-    else
-    {
     modem_pose_relative.pose.position.x = (float)usbllong->X;
     modem_pose_relative.pose.position.y = (float)usbllong->Y;
-    }
-    modem_pose_relative.pose.position.z = (float)usbllong->D;
+    modem_pose_relative.pose.position.z = (float)usbllong->Z;
     modem_pose_relative.covariance[0] = cov_usbl_;
     modem_pose_relative.covariance[7] = cov_usbl_;
     modem_pose_relative.covariance[14] = cov_usbl_;
@@ -138,20 +121,7 @@ protected:
                  const geometry_msgs::PoseWithCovariance& modem_pose_relative,
                  geometry_msgs::PoseWithCovariance& modem_pose)
   {
-    //pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose); TO-DO: rewrite with mrpt
-    tf::Transform usbl_pose_tf ;
-    tf::Transform modem_pose_relative_tf ;
-    
-    tf::poseMsgToTF(usbl_pose.pose, usbl_pose_tf) ;
-    tf::poseMsgToTF(modem_pose_relative.pose, modem_pose_relative_tf) ;
-    
-    tf::Transform modem_pose_tf = usbl_pose_tf * modem_pose_relative_tf ;
-    
-    tf::poseTFToMsg(modem_pose_tf, modem_pose.pose) ;
-    
-    ROS_INFO_STREAM("modem_pose_x" << modem_pose.pose.position.x) ;
-    ROS_INFO_STREAM("modem_pose_y" << modem_pose.pose.position.y) ;
-    ROS_INFO_STREAM("modem_pose_z" << modem_pose.pose.position.z) ;
+    pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose);
   }
 
   void Publish(const geometry_msgs::PoseWithCovariance& modem_pose,
@@ -174,7 +144,6 @@ private:
   string node_name_;
   string frame_map_;
   string frame_usbl_;
-  string crs_;
   double cov_usbl_;
   double rssi_max_;
   double rssi_min_;

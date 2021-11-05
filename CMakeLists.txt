@@ -55,3 +55,7 @@ add_dependencies(usbl_position ${catkin_EXPORTED_TARGETS})
 add_executable(usbl_projection src/usbl_projection.cpp)
 target_link_libraries(usbl_projection ${catkin_LIBRARIES})
 add_dependencies(usbl_projection ${catkin_EXPORTED_TARGETS})
+
+add_executable(usbl_position_xiroi src/usbl_position_xiroi.cpp)
+target_link_libraries(usbl_position_xiroi ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES})
+add_dependencies(usbl_position_xiroi ${catkin_EXPORTED_TARGETS})
