@@ -12,14 +12,9 @@
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
-<<<<<<< HEAD
 // #include <mrpt/poses/CPose3D.h>
 #include <typeinfo>
 
-=======
-//#include <mrpt/poses/CPose3D.h>
-#include <pose_cov_ops/pose_cov_ops.h>
->>>>>>> origin/melodic
 
 
 using namespace std;

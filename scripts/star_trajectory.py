@@ -14,8 +14,8 @@ from numpy import *
 import PyKDL
 import sys
 from std_srvs.srv import Empty
-from auv_msgs.msg import GoalDescriptor
-from auv_msgs.msg import NavSts
+from cola2_msgs.msg import GoalDescriptor
+from cola2_msgs.msg import NavSts
 from control.srv import Goto, GotoRequest
 
 from utils import utils, NED
