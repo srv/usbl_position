@@ -95,6 +95,9 @@ protected:
       usbl_pose.pose.position.z = transform.getOrigin().z();
       if (crs_ == "ned")
       {
+        usbl_pose.pose.orientation.x = 0.0;
+        usbl_pose.pose.orientation.y = 0.0;
+        usbl_pose.pose.orientation.z = 0.0;
         usbl_pose.pose.orientation.w = 1.0;
       }
       else
