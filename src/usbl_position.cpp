@@ -31,7 +31,7 @@ public:
 
     // Get Params
     nh_.param("frames/map", frame_map_, string("world_ned"));
-    nh_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
+    nh_.param("frames/sensors/usbl", frame_usbl_, string("xiroi/usbl"));
     nh_.param("sensors/usbl/covariance", cov_usbl_, 4.0);
     nh_.param("sensors/usbl/rssi_max", rssi_max_, -20.0);
     nh_.param("sensors/usbl/rssi_min", rssi_min_, -85.0);
@@ -39,10 +39,11 @@ public:
     nh_.param("sensors/usbl/crs", crs_, string("xyz"));
 
     // Subscribers
-    sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
+    //sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
+    sub_usbllong_ = nh_.subscribe("/xiroi/usbllong", 1, &Position::UsbllongCb, this);
 
     //Publishers
-    pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
+    pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/modem_delayed", 10);
   }
 
   void UsbllongCb(const evologics_ros_sync::EvologicsUsbllong::ConstPtr &usbllong)
@@ -53,11 +54,18 @@ public:
     ROS_INFO_STREAM("[" << node_name_ << "]: Get USBL pose");
     geometry_msgs::PoseWithCovariance usbl_pose;
     if (!GetPose(usbl_pose)) return;
+    ROS_INFO_STREAM("modem_pose_relative " << usbl_pose.pose.position) ;
+
+
 
     ROS_INFO_STREAM("[" << node_name_ << "]: Get Modem pose");
     geometry_msgs::PoseWithCovariance modem_pose_relative;
-    geometry_msgs::PoseWithCovariance modem_pose;
     GetPoseMsg(usbllong, modem_pose_relative);
+    ROS_INFO_STREAM("modem_pose_relative " << modem_pose_relative.pose.position) ;
+
+
+    ROS_INFO_STREAM("[" << node_name_ << "]: Transform");
+    geometry_msgs::PoseWithCovariance modem_pose;
     Transform(usbl_pose, modem_pose_relative, modem_pose);
 
     ROS_INFO_STREAM("[" << node_name_ << "]: Publish modem delayed position");
@@ -95,9 +103,6 @@ protected:
       usbl_pose.pose.position.z = transform.getOrigin().z();
       if (crs_ == "ned")
       {
-        usbl_pose.pose.orientation.x = 0.0;
-        usbl_pose.pose.orientation.y = 0.0;
-        usbl_pose.pose.orientation.z = 0.0;
         usbl_pose.pose.orientation.w = 1.0;
       }
       else
@@ -116,18 +121,19 @@ protected:
     }
   }
 
-  bool GetPoseMsg(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong,
+  void GetPoseMsg(const evologics_ros_sync::EvologicsUsbllong::ConstPtr& usbllong,
                   geometry_msgs::PoseWithCovariance& modem_pose_relative)
   {
+    ROS_INFO_STREAM("[" << node_name_ << "]: CRS  " << crs_);
     if (crs_ == "ned")
     {
-    modem_pose_relative.pose.position.x = (float)usbllong->N;
-    modem_pose_relative.pose.position.y = (float)usbllong->E;
+      modem_pose_relative.pose.position.x = (float)usbllong->N;
+      modem_pose_relative.pose.position.y = (float)usbllong->E;
     }
     else
     {
-    modem_pose_relative.pose.position.x = (float)usbllong->X;
-    modem_pose_relative.pose.position.y = (float)usbllong->Y;
+      modem_pose_relative.pose.position.x = (float)usbllong->X;
+      modem_pose_relative.pose.position.y = (float)usbllong->Y;
     }
     modem_pose_relative.pose.position.z = (float)usbllong->D;
     modem_pose_relative.covariance[0] = cov_usbl_;
@@ -140,7 +146,23 @@ protected:
                  const geometry_msgs::PoseWithCovariance& modem_pose_relative,
                  geometry_msgs::PoseWithCovariance& modem_pose)
   {
-    pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose);
+    //pose_cov_ops::compose(usbl_pose, modem_pose_relative, modem_pose); TO-DO: rewrite with mrpt
+    tf::Transform usbl_pose_tf ;
+    tf::Transform modem_pose_relative_tf ;
+    
+    ROS_INFO_STREAM("[" << node_name_ << "]: Pose to TF 1");
+    tf::poseMsgToTF(usbl_pose.pose, usbl_pose_tf) ;
+
+    ROS_INFO_STREAM("[" << node_name_ << "]: Pose to TF 2");
+    tf::poseMsgToTF(modem_pose_relative.pose, modem_pose_relative_tf) ;
+    
+    tf::Transform modem_pose_tf = usbl_pose_tf * modem_pose_relative_tf ;
+    
+    tf::poseTFToMsg(modem_pose_tf, modem_pose.pose) ;
+    
+    ROS_INFO_STREAM("modem_pose_x" << modem_pose.pose.position.x) ;
+    ROS_INFO_STREAM("modem_pose_y" << modem_pose.pose.position.y) ;
+    ROS_INFO_STREAM("modem_pose_z" << modem_pose.pose.position.z) ;
   }
 
   void Publish(const geometry_msgs::PoseWithCovariance& modem_pose,
