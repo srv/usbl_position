@@ -31,7 +31,7 @@ public:
 
     // Get Params
     nh_.param("frames/map", frame_map_, string("world_ned"));
-    nh_.param("frames/sensors/usbl", frame_usbl_, string("xiroi/usbl"));
+    nh_.param("frames/sensors/usbl", frame_usbl_, string("usbl"));
     nh_.param("sensors/usbl/covariance", cov_usbl_, 4.0);
     nh_.param("sensors/usbl/rssi_max", rssi_max_, -20.0);
     nh_.param("sensors/usbl/rssi_min", rssi_min_, -85.0);
@@ -39,11 +39,10 @@ public:
     nh_.param("sensors/usbl/crs", crs_, string("xyz"));
 
     // Subscribers
-    //sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
-    sub_usbllong_ = nh_.subscribe("/xiroi/usbllong", 1, &Position::UsbllongCb, this);
+    sub_usbllong_ = nh_.subscribe("usbllong", 1, &Position::UsbllongCb, this);
 
     //Publishers
-    pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/modem_delayed", 10);
+    pub_modem_ = nhp_.advertise<geometry_msgs::PoseWithCovarianceStamped>("modem_delayed", 10);
   }
 
   void UsbllongCb(const evologics_ros_sync::EvologicsUsbllong::ConstPtr &usbllong)
