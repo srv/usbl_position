@@ -29,33 +29,39 @@ find_package(catkin REQUIRED
 	evologics_ros_sync
 	tf
 	pose_cov_ops
-	cola2_lib
+	# cola2_lib_ros
    cola2_msgs
 	cmake_modules
 	message_filters
 	)
 
-# Dependencies - Eigen:
+# System dependencies
 find_package(Eigen3 REQUIRED)
+find_package(COLA2_LIB REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS
   message_runtime
   rospy
   roscpp
-  evologics_ros_sync)
+  evologics_ros_sync
+  geometry_msgs)
 
 ## Build node
-include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIRS})
+include_directories(
+   include
+   ${catkin_INCLUDE_DIRS}
+   ${EIGEN3_INCLUDE_DIRS}
+   ${COLA2_LIB_INCLUDE_DIRS})
 
 add_executable(usbl_position src/usbl_position.cpp)
-target_link_libraries(usbl_position ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES})
+target_link_libraries(usbl_position ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES} ${COLA2_LIB_LIBRARIES})
 add_dependencies(usbl_position ${catkin_EXPORTED_TARGETS})
 
 add_executable(usbl_projection src/usbl_projection.cpp)
-target_link_libraries(usbl_projection ${catkin_LIBRARIES})
+target_link_libraries(usbl_projection ${catkin_LIBRARIES} ${COLA2_LIB_LIBRARIES})
 add_dependencies(usbl_projection ${catkin_EXPORTED_TARGETS})
 
 add_executable(usbl_position_xiroi src/usbl_position_xiroi.cpp)
-target_link_libraries(usbl_position_xiroi ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES})
+target_link_libraries(usbl_position_xiroi ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES} ${COLA2_LIB_LIBRARIES})
 add_dependencies(usbl_position_xiroi ${catkin_EXPORTED_TARGETS})

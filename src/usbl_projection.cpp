@@ -77,13 +77,13 @@ public:
     }
 
     // Get sides
-    int min_idx_1 = min_idx - 1;
-    int min_idx_2 = min_idx;
-    if (odom_stamps_[min_idx] < usbl_stamp)
-    {
-      min_idx_1 = min_idx;
-      min_idx_2 = min_idx + 1;
-    }
+    // int min_idx_1 = min_idx - 1;
+    // int min_idx_2 = min_idx;
+    // if (odom_stamps_[min_idx] < usbl_stamp)
+    // {
+    //   min_idx_1 = min_idx;
+    //   min_idx_2 = min_idx + 1;
+    // }
 
     odom_for_usbl = odom_hist_[min_idx];
     // if (min_idx < (int)odom_stamps_.size() - 1) // If inside the historial (interpolate)
